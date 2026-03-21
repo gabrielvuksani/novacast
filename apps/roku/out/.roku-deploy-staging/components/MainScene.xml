@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="MainScene" extends="Scene">
+    <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
+    <script type="text/brightscript" uri="pkg:/source/bslib.brs" />
+    <children>
+        <Rectangle id="background" width="1920" height="1080" color="0x0A0A0FFF" />
+        <Label id="titleLabel" translation="[80,70]" text="Streamio" color="0xF0F0F5FF" />
+        <Label id="subtitleLabel" translation="[80,120]" text="Roku addon browser shell" color="0xA0A0B8FF" />
+        <MarkupList id="addonList" itemSize="[760,120]" translation="[80,180]" itemSpacing="[0,20]" />
+    </children>
+</component>

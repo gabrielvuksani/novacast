@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "NovaCast TV",
+    "slug": "novacast-tv",
+    "version": "0.1.0",
+    "orientation": "default",
+    "scheme": "novacast-tv",
+    "userInterfaceStyle": "dark",
+    "platforms": ["android", "ios"],
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0f"
+    },
+    "assetBundlePatterns": ["**/*"]
+  }
+}

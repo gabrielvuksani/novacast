@@ -1,0 +1,12 @@
+{
+  "name": "@novacast/roku",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "bsc --project bsconfig.json --no-emit",
+    "typecheck": "bsc --project bsconfig.json --no-emit"
+  },
+  "devDependencies": {
+    "brighterscript": "^0.70.0"
+  }
+}

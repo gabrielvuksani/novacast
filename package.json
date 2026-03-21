@@ -1,0 +1,21 @@
+{
+  "name": "novacast",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NovaCast — Your universe of entertainment. A cross-platform streaming app.",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "clean": "turbo clean",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

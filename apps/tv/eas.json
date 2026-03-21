@@ -1,0 +1,21 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development_tv": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_TV": "1"
+      }
+    },
+    "preview_tv": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_TV": "1"
+      }
+    }
+  },
+  "submit": {}
+}

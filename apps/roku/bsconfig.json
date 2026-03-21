@@ -1,0 +1,13 @@
+{
+  "rootDir": ".",
+  "createPackage": false,
+  "copyToStaging": false,
+  "files": [
+    "source/**/*.brs",
+    "components/**/*.xml",
+    "components/**/*.brs"
+  ],
+  "diagnosticSeverityOverrides": {
+    "BS1013": "warn"
+  }
+}
