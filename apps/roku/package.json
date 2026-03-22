@@ -1,12 +1,15 @@
 {
   "name": "@novacast/roku",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "bsc --project bsconfig.json --no-emit",
-    "typecheck": "bsc --project bsconfig.json --no-emit"
+    "build": "bsc --project bsconfig.json",
+    "typecheck": "bsc --project bsconfig.json --no-emit",
+    "deploy": "npx roku-deploy --rootDir . --host $ROKU_HOST --password $ROKU_PASSWORD",
+    "package": "cd out && zip -r ../novacast-roku.zip . && cd .."
   },
   "devDependencies": {
-    "brighterscript": "^0.70.0"
+    "brighterscript": "^0.70.0",
+    "roku-deploy": "^3.12.0"
   }
 }

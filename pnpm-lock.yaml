@@ -57,6 +57,9 @@ importers:
       brighterscript:
         specifier: ^0.70.0
         version: 0.70.3
+      roku-deploy:
+        specifier: ^3.12.0
+        version: 3.16.2
 
   apps/tv:
     dependencies:

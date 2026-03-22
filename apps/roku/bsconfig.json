@@ -1,13 +1,18 @@
 {
   "rootDir": ".",
-  "createPackage": false,
-  "copyToStaging": false,
+  "stagingDir": "./out/staging",
+  "outFile": "./out/novacast.zip",
+  "createPackage": true,
   "files": [
+    "manifest",
     "source/**/*.brs",
     "components/**/*.xml",
-    "components/**/*.brs"
+    "components/**/*.brs",
+    "images/**/*.png",
+    "images/**/*.jpg"
   ],
   "diagnosticSeverityOverrides": {
-    "BS1013": "warn"
+    "BS1013": "warn",
+    "BS1001": "warn"
   }
 }
