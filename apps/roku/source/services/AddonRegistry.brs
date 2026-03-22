@@ -2,6 +2,7 @@ function CreateAddonRegistry() as Object
   registry = {
     defaultAddonUrls: [
       "https://v3-cinemeta.strem.io/manifest.json",
+      "https://flixnest.app/flix-streams/manifest.json",
       "https://thepiratebay-plus.strem.fun/manifest.json",
       "https://torrentio.strem.fun/manifest.json",
       "https://848b3516657c-usatv.baby-beamup.club/manifest.json",
@@ -28,7 +29,6 @@ function CreateAddonRegistry() as Object
             else if type(resource) = "roAssociativeArray" and resource.name <> invalid
               resourceName = resource.name
             end if
-
             if resourceName = "catalog" then hasCatalog = true
             if resourceName = "meta" then hasMeta = true
             if resourceName = "stream" then hasStream = true
