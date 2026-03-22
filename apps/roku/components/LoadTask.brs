@@ -132,7 +132,16 @@ sub loadStreamsTask()
           ' Detect stream format from URL
           streamFormat = detectFormat(cleanUrl)
 
-          streams.Push({ url: cleanUrl, format: streamFormat, label: streamLabel, playable: true })
+          ' Mark HLS/DASH as preferred (true streaming protocols)
+          isAdaptive = (streamFormat = "hls" or streamFormat = "dash")
+
+          if isAdaptive
+            ' HLS/DASH streams are always safe to play
+            streams.Push({ url: cleanUrl, format: streamFormat, label: "[HLS] " + streamLabel, playable: true })
+          else
+            ' Direct files — still include but note they may not work on all devices
+            streams.Push({ url: cleanUrl, format: streamFormat, label: streamLabel, playable: true })
+          end if
         end if
       end for
     end if

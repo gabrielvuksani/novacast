@@ -371,13 +371,31 @@ end sub
 ' ══════════════ PLAYBACK ══════════════
 
 sub playStream(url as String, fmt as String, title as String)
+  if url = invalid or url = ""
+    showPlaybackError("No stream URL available")
+    return
+  end if
+
+  ' Create content node for video
   vc = CreateObject("roSGNode", "ContentNode")
   vc.url = url
   vc.title = title
   vc.streamFormat = fmt
+
+  ' Set poster
   if m.currentMeta <> invalid and m.currentMeta.poster <> invalid
     vc.hdPosterUrl = m.currentMeta.poster
   end if
+
+  ' Set adaptive streaming hints
+  if fmt = "hls" or fmt = "dash"
+    vc.switchingStrategy = "full-adaptation"
+  end if
+
+  ' Stop any existing playback first
+  m.videoPlayer.control = "stop"
+
+  ' Set content and play
   m.videoPlayer.content = vc
   m.videoPlayer.control = "play"
   navigateTo("player")
@@ -385,13 +403,49 @@ end sub
 
 sub onVideoStateChange()
   state = m.videoPlayer.state
+
   if state = "error"
+    errCode = ""
+    errMsg = "Playback failed"
+    if m.videoPlayer.errorCode <> invalid
+      errCode = m.videoPlayer.errorCode.ToStr()
+    end if
+    if m.videoPlayer.errorMsg <> invalid and m.videoPlayer.errorMsg <> ""
+      errMsg = m.videoPlayer.errorMsg
+    end if
+
     m.videoPlayer.control = "stop"
-    goBack()
+    m.videoPlayer.visible = false
+
+    ' Go back and show error
+    if m.screenStack.Count() > 0
+      prev = m.screenStack.Pop()
+      activateScreen(prev)
+    else
+      activateScreen("home")
+    end if
+
+    showPlaybackError("Error " + errCode + ": " + errMsg + ". Try a different source.")
   else if state = "finished"
     m.videoPlayer.control = "stop"
-    goBack()
+    m.videoPlayer.visible = false
+
+    if m.screenStack.Count() > 0
+      prev = m.screenStack.Pop()
+      activateScreen(prev)
+    else
+      activateScreen("home")
+    end if
   end if
+end sub
+
+sub showPlaybackError(msg as String)
+  dialog = createObject("roSGNode", "StandardMessageDialog")
+  dialog.title = "Playback Error"
+  dialog.message = [msg]
+  dialog.buttons = ["OK"]
+  dialog.observeField("buttonSelected", "onDialogClose")
+  m.top.dialog = dialog
 end sub
 
 ' ══════════════ SEARCH ══════════════
