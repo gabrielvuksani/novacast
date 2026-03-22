@@ -44,6 +44,7 @@ sub init()
   m.currentScreen = "home"
   m.screenStack = []
   m.allMetas = []
+  m.regularMetas = []
   m.liveMetas = []
   m.searchMetas = []
   m.addons = []
@@ -52,7 +53,7 @@ sub init()
   m.currentMeta = invalid
   m.currentStreams = []
   m.catalogRows = []
-  m.activeTab = 0
+  m.playerClosing = false
 
   ' Observers
   m.playerScreen.observeField("action", "onPlayerAction")
@@ -129,15 +130,14 @@ sub onCatalogsLoaded(result as Object)
   for each meta in m.allMetas
     metaType = ""
     if meta.type <> invalid then metaType = LCase(meta.type)
-    metaName = ""
-    if meta.name <> invalid then metaName = LCase(meta.name)
 
-    if metaType = "tv" or metaType = "channel" or Instr(1, metaName, "espn") > 0 or Instr(1, metaName, "fox sports") > 0 or Instr(1, metaName, "nfl") > 0 or Instr(1, metaName, "nba") > 0
+    if metaType = "tv" or metaType = "channel"
       liveMetas.Push(meta)
     else
       regularMetas.Push(meta)
     end if
   end for
+  m.regularMetas = regularMetas
   m.liveMetas = liveMetas
 
   ' Populate home grid with regular content
@@ -277,34 +277,15 @@ end sub
 
 sub onHomeItemSelected(event as Object)
   index = event.getData()
-  ' Get from regular metas (not live)
-  regularMetas = []
-  for each meta in m.allMetas
-    metaType = ""
-    if meta.type <> invalid then metaType = LCase(meta.type)
-    if metaType <> "tv" and metaType <> "channel"
-      regularMetas.Push(meta)
-    end if
-  end for
-  if index >= 0 and index < regularMetas.Count()
-    showDetail(regularMetas[index])
-  else if index >= 0 and index < m.allMetas.Count()
-    showDetail(m.allMetas[index])
+  if index >= 0 and index < m.regularMetas.Count()
+    showDetail(m.regularMetas[index])
   end if
 end sub
 
 sub onHomeItemFocused(event as Object)
   index = event.getData()
-  regularMetas = []
-  for each meta in m.allMetas
-    metaType = ""
-    if meta.type <> invalid then metaType = LCase(meta.type)
-    if metaType <> "tv" and metaType <> "channel"
-      regularMetas.Push(meta)
-    end if
-  end for
-  if index >= 0 and index < regularMetas.Count()
-    setHero(regularMetas[index])
+  if index >= 0 and index < m.regularMetas.Count()
+    setHero(m.regularMetas[index])
   end if
 end sub
 
@@ -358,12 +339,11 @@ sub activateScreen(name as String)
   else if name = "player"
     m.playerScreen.visible = true
     m.playerScreen.setFocus(true)
+    m.playerClosing = false
   end if
 end sub
 
 sub updateTabHighlight(activeIndex as Integer)
-  m.activeTab = activeIndex
-  ' Reset all tabs
   m.tabHome.color = "0x6B7A9EAA"
   m.tabLive.color = "0x6B7A9EAA"
   m.tabSports.color = "0x6B7A9EAA"
@@ -461,7 +441,6 @@ sub onSourceSelected(event as Object)
       if m.currentMeta <> invalid then title = m.currentMeta.name
       playStream(stream.url, stream.format, title)
     else if stream.format = "external" and stream.url <> invalid and stream.url <> ""
-      ' Show message that external URLs are not supported on Roku
       dialog = createObject("roSGNode", "StandardMessageDialog")
       dialog.title = "External Link"
       dialog.message = ["This source opens in a web browser.", "It cannot be played directly on Roku."]
@@ -495,7 +474,6 @@ sub playStream(url as String, fmt as String, title as String)
   vc.url = url
   vc.title = title
 
-  ' Set stream format - default to hls if unknown
   if fmt = "hls" or fmt = "dash" or fmt = "mp4" or fmt = "smooth"
     vc.streamFormat = fmt
   else
@@ -507,7 +485,6 @@ sub playStream(url as String, fmt as String, title as String)
     if m.currentMeta.description <> invalid then vc.description = m.currentMeta.description
   end if
 
-  ' Enable adaptive bitrate for HLS/DASH
   if fmt = "hls" or fmt = "dash" then vc.switchingStrategy = "full-adaptation"
 
   m.playerScreen.content = vc
@@ -517,6 +494,10 @@ end sub
 sub onPlayerAction()
   action = m.playerScreen.action
   if action = "close"
+    ' Guard against double-close (timer + back button both fire)
+    if m.playerClosing then return
+    m.playerClosing = true
+
     m.playerScreen.visible = false
     if m.screenStack.Count() > 0
       prev = m.screenStack.Pop()
@@ -590,21 +571,9 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return true
   end if
 
-  ' Tab switching on home screen with left/right when grid is at edge
-  if m.currentScreen = "home"
-    if key = "right"
-      ' Check if we should switch to live tab
-      ' Only switch if we are pressing right and the grid's focus is at the far right
-    end if
-    if key = "left"
-      ' If on live screen, go back to home
-    end if
-  end if
-
-  ' Quick tab switch: left on live goes to home, "play" on home with live content goes to live
-  if m.currentScreen = "home" and key = "play"
-    ' If on detail, try to auto-play first playable stream
-    if m.currentStreams.Count() > 0
+  ' Play button: auto-play first playable stream on detail, or go to live on home
+  if key = "play"
+    if m.currentScreen = "detail" and m.currentStreams.Count() > 0
       for each stream in m.currentStreams
         if stream.playable = true and stream.url <> invalid and stream.url <> ""
           title = ""
@@ -614,22 +583,10 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
       end for
     end if
-    ' Otherwise switch to live tab
-    if m.liveMetas.Count() > 0
+    if m.currentScreen = "home" and m.liveMetas.Count() > 0
       navigateTo("live")
       return true
     end if
-  end if
-
-  if m.currentScreen = "detail" and key = "play"
-    for each stream in m.currentStreams
-      if stream.playable = true and stream.url <> invalid and stream.url <> ""
-        title = ""
-        if m.currentMeta <> invalid then title = m.currentMeta.name
-        playStream(stream.url, stream.format, title)
-        return true
-      end if
-    end for
   end if
 
   return false
