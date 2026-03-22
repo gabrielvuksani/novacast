@@ -1,4 +1,5 @@
 sub init()
+  m.top.functionName = "doTask"
 end sub
 
 sub doTask()
@@ -35,7 +36,6 @@ sub loadCatalogsTask()
     manifest = HttpGetJson(url)
     if manifest <> invalid and manifest.catalogs <> invalid
       for each catalog in manifest.catalogs
-        ' Skip search-only catalogs
         isSearchOnly = false
         if catalog.extra <> invalid
           for each extra in catalog.extra
@@ -76,7 +76,6 @@ sub loadStreamsTask()
   streams = []
   for i = 0 to urls.Count() - 1
     url = urls[i]
-    ' Check if this addon has stream resource
     manifest = HttpGetJson(url)
     if manifest <> invalid and manifest.resources <> invalid
       hasStream = false

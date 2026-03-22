@@ -2,20 +2,20 @@ sub init()
   m.top.backgroundURI = ""
   m.top.backgroundColor = "0x080C18FF"
 
-  ' ── Cache node references ──
+  ' Cache UI nodes
   m.navLabel = m.top.findNode("navLabel")
   m.homeScreen = m.top.findNode("homeScreen")
   m.detailScreen = m.top.findNode("detailScreen")
   m.searchScreen = m.top.findNode("searchScreen")
   m.sourcesScreen = m.top.findNode("sourcesScreen")
   m.videoPlayer = m.top.findNode("videoPlayer")
-  m.contentRows = m.top.findNode("contentRows")
 
   m.heroPoster = m.top.findNode("heroPoster")
   m.heroTitle = m.top.findNode("heroTitle")
   m.heroDesc = m.top.findNode("heroDesc")
   m.heroMeta = m.top.findNode("heroMeta")
 
+  m.homeGrid = m.top.findNode("homeGrid")
   m.detailBg = m.top.findNode("detailBg")
   m.detailTitle = m.top.findNode("detailTitle")
   m.detailMeta = m.top.findNode("detailMeta")
@@ -23,53 +23,43 @@ sub init()
   m.detailGenres = m.top.findNode("detailGenres")
   m.sourceList = m.top.findNode("sourceList")
   m.noSrcLabel = m.top.findNode("noSrcLabel")
-
-  m.searchKeyboard = m.top.findNode("searchKeyboard")
   m.searchGrid = m.top.findNode("searchGrid")
   m.searchInfo = m.top.findNode("searchInfo")
-
   m.addonList = m.top.findNode("addonList")
 
-  ' ── App state ──
+  ' App state
   m.currentScreen = "home"
   m.screenStack = []
   m.allMetas = []
+  m.searchMetas = []
   m.addons = []
   m.addonUrls = []
   m.currentMeta = invalid
   m.currentStreams = []
 
-  ' ── Set initial UI ──
-  m.navLabel.text = "Loading..."
-  m.heroTitle.text = "NovaCast"
-  m.heroDesc.text = "Loading your content sources..."
-
-  ' ── Observe video player ──
+  ' Observers
   m.videoPlayer.observeField("state", "onVideoStateChange")
-
-  ' ── Observe RowList item selection ──
-  m.contentRows.observeField("rowItemSelected", "onRowItemSelected")
+  m.homeGrid.observeField("itemSelected", "onHomeItemSelected")
+  m.homeGrid.observeField("itemFocused", "onHomeItemFocused")
   m.sourceList.observeField("itemSelected", "onSourceSelected")
   m.searchGrid.observeField("itemSelected", "onSearchItemSelected")
 
-  ' ── Give focus to the content rows immediately ──
-  m.contentRows.setFocus(true)
+  ' Focus home grid
+  m.homeGrid.setFocus(true)
 
-  ' ── Start loading addons in a background Task ──
-  startTask("loadAddons")
+  ' Load data
+  runTask("loadAddons")
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' TASK MANAGEMENT — All network calls run here, off the render thread
-' ═══════════════════════════════════════════════════════════
+' ══════════════ TASK MANAGEMENT ══════════════
 
-sub startTask(action as String, params = {} as Object)
+sub runTask(action as String, params = {} as Object)
   task = createObject("roSGNode", "LoadTask")
   task.action = action
 
   if params.transportUrls <> invalid
     task.transportUrls = params.transportUrls
-  else if m.addonUrls.Count() > 0
+  else if m.addonUrls <> invalid and m.addonUrls.Count() > 0
     task.transportUrls = m.addonUrls
   end if
 
@@ -78,43 +68,28 @@ sub startTask(action as String, params = {} as Object)
   if params.searchQuery <> invalid then task.searchQuery = params.searchQuery
 
   task.observeField("result", "onTaskResult")
-  task.control = "run"
+  task.control = "RUN"
 end sub
 
 sub onTaskResult(event as Object)
   result = event.getData()
   if result = invalid then return
-
-  action = result.action
-
-  if action = "addons"
-    onAddonsLoaded(result)
-  else if action = "catalogs"
-    onCatalogsLoaded(result)
-  else if action = "streams"
-    onStreamsLoaded(result)
-  else if action = "search"
-    onSearchResults(result)
-  else if action = "meta"
-    onMetaLoaded(result)
-  end if
+  if result.action = "addons" then onAddonsLoaded(result)
+  if result.action = "catalogs" then onCatalogsLoaded(result)
+  if result.action = "streams" then onStreamsLoaded(result)
+  if result.action = "search" then onSearchResults(result)
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' ADDON LOADING
-' ═══════════════════════════════════════════════════════════
+' ══════════════ DATA CALLBACKS ══════════════
 
 sub onAddonsLoaded(result as Object)
   m.addons = result.addons
-
-  ' Collect transport URLs for catalog loading
   urls = []
   for each addon in m.addons
     urls.Push(addon.transportUrl)
   end for
   m.addonUrls = urls
 
-  ' Populate sources screen
   content = CreateObject("roSGNode", "ContentNode")
   for each addon in m.addons
     node = content.CreateChild("ContentNode")
@@ -122,96 +97,83 @@ sub onAddonsLoaded(result as Object)
   end for
   m.addonList.content = content
 
-  m.navLabel.text = m.addons.Count().ToStr() + " sources loaded"
-
-  ' Now load catalogs
-  startTask("loadCatalogs")
+  m.navLabel.text = m.addons.Count().ToStr() + " sources"
+  runTask("loadCatalogs")
 end sub
-
-' ═══════════════════════════════════════════════════════════
-' CATALOG LOADING
-' ═══════════════════════════════════════════════════════════
 
 sub onCatalogsLoaded(result as Object)
   m.allMetas = result.allMetas
-  rows = result.rows
 
-  ' Build RowList content tree
-  rowContent = CreateObject("roSGNode", "ContentNode")
-  for each rowData in rows
-    rowNode = rowContent.CreateChild("ContentNode")
-    rowNode.title = rowData.title
-
-    for each meta in rowData.items
-      itemNode = rowNode.CreateChild("ContentNode")
-      itemNode.title = meta.name
-      if meta.poster <> invalid then itemNode.hdPosterUrl = meta.poster
-      if meta.description <> invalid then itemNode.description = meta.description
-
-      metaLine = ""
-      if meta.releaseInfo <> invalid then metaLine = meta.releaseInfo
-      if meta.imdbRating <> invalid
-        rating = ""
-        if type(meta.imdbRating) = "roFloat" or type(meta.imdbRating) = "Float"
-          rating = Str(meta.imdbRating).Trim()
-        else if type(meta.imdbRating) = "roInteger" or type(meta.imdbRating) = "Integer"
-          rating = Str(meta.imdbRating).Trim()
-        else
-          rating = meta.imdbRating.ToStr()
-        end if
-        if metaLine <> "" then metaLine = metaLine + "  "
-        metaLine = metaLine + "★ " + rating
-      end if
-      itemNode.shortDescriptionLine2 = metaLine
-
-      ' Store meta identifiers
-      itemNode.addFields({ metaId: "", metaType: "" })
-      if meta.id <> invalid then itemNode.metaId = meta.id
-      if meta.type <> invalid then itemNode.metaType = meta.type
-    end for
+  gridContent = CreateObject("roSGNode", "ContentNode")
+  for each meta in m.allMetas
+    node = gridContent.CreateChild("ContentNode")
+    node.title = meta.name
+    if meta.poster <> invalid then node.hdPosterUrl = meta.poster
+    if meta.releaseInfo <> invalid then node.shortDescriptionLine2 = meta.releaseInfo
   end for
+  m.homeGrid.content = gridContent
+  m.navLabel.text = m.allMetas.Count().ToStr() + " titles"
 
-  m.contentRows.content = rowContent
-  m.navLabel.text = rows.Count().ToStr() + " catalogs · " + m.allMetas.Count().ToStr() + " titles"
-
-  ' Set hero from first meta
   if m.allMetas.Count() > 0
     setHero(m.allMetas[0])
   else
     m.heroTitle.text = "NovaCast"
-    m.heroDesc.text = "No content loaded. Add sources in the Sources screen."
+    m.heroDesc.text = "No content. Press Options to manage sources."
   end if
-
-  m.contentRows.setFocus(true)
+  m.homeGrid.setFocus(true)
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' HERO BANNER
-' ═══════════════════════════════════════════════════════════
+sub onStreamsLoaded(result as Object)
+  m.currentStreams = result.streams
+  srcContent = CreateObject("roSGNode", "ContentNode")
+  for each stream in m.currentStreams
+    node = srcContent.CreateChild("ContentNode")
+    node.title = stream.label + "  [" + UCase(stream.format) + "]"
+  end for
+  m.sourceList.content = srcContent
+
+  if m.currentStreams.Count() > 0
+    m.noSrcLabel.visible = false
+    m.sourceList.visible = true
+    m.sourceList.setFocus(true)
+  else
+    m.noSrcLabel.visible = true
+    m.noSrcLabel.text = "No playable sources found."
+    m.sourceList.visible = false
+  end if
+end sub
+
+sub onSearchResults(result as Object)
+  m.searchMetas = result.results
+  searchContent = CreateObject("roSGNode", "ContentNode")
+  for each meta in m.searchMetas
+    node = searchContent.CreateChild("ContentNode")
+    node.title = meta.name
+    if meta.poster <> invalid then node.hdPosterUrl = meta.poster
+    if meta.releaseInfo <> invalid then node.shortDescriptionLine2 = meta.releaseInfo
+  end for
+  m.searchGrid.content = searchContent
+  m.searchInfo.text = m.searchMetas.Count().ToStr() + " results"
+  showScreen("search")
+  m.searchGrid.setFocus(true)
+end sub
+
+' ══════════════ HERO ══════════════
 
 sub setHero(meta as Object)
   if meta = invalid then return
-
   m.heroTitle.text = meta.name
-
   if meta.description <> invalid
-    m.heroDesc.text = Left(meta.description, 200)
+    desc = meta.description
+    if Len(desc) > 150 then desc = Left(desc, 150) + "..."
+    m.heroDesc.text = desc
   else
     m.heroDesc.text = ""
   end if
-
-  metaParts = []
-  if meta.releaseInfo <> invalid then metaParts.Push(meta.releaseInfo)
-  if meta.type <> invalid then metaParts.Push(UCase(meta.type))
-  if meta.imdbRating <> invalid
-    if type(meta.imdbRating) = "roFloat" or type(meta.imdbRating) = "Float"
-      metaParts.Push("★ " + Str(meta.imdbRating).Trim())
-    else
-      metaParts.Push("★ " + meta.imdbRating.ToStr())
-    end if
-  end if
-  m.heroMeta.text = metaParts.Join("  |  ")
-
+  parts = []
+  if meta.releaseInfo <> invalid then parts.Push(meta.releaseInfo)
+  if meta.type <> invalid then parts.Push(UCase(meta.type))
+  m.heroMeta.text = parts.Join("  |  ")
   if meta.background <> invalid
     m.heroPoster.uri = meta.background
   else if meta.poster <> invalid
@@ -219,67 +181,51 @@ sub setHero(meta as Object)
   end if
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' ROW ITEM SELECTION
-' ═══════════════════════════════════════════════════════════
+' ══════════════ HOME EVENTS ══════════════
 
-sub onRowItemSelected(event as Object)
-  indices = event.getData()
-  if indices = invalid or type(indices) <> "roArray" or indices.Count() < 2 then return
-
-  rowContent = m.contentRows.content
-  if rowContent = invalid then return
-
-  row = rowContent.getChild(indices[0])
-  if row = invalid then return
-
-  item = row.getChild(indices[1])
-  if item = invalid then return
-
-  metaId = ""
-  metaType = ""
-  if item.hasField("metaId") then metaId = item.metaId
-  if item.hasField("metaType") then metaType = item.metaType
-
-  foundMeta = findMetaById(metaId)
-  if foundMeta <> invalid
-    showDetail(foundMeta)
+sub onHomeItemSelected(event as Object)
+  index = event.getData()
+  if index >= 0 and index < m.allMetas.Count()
+    showDetail(m.allMetas[index])
   end if
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' NAVIGATION
-' ═══════════════════════════════════════════════════════════
-
-sub showScreen(screenName as String)
-  m.homeScreen.visible = (screenName = "home")
-  m.detailScreen.visible = (screenName = "detail")
-  m.searchScreen.visible = (screenName = "search")
-  m.sourcesScreen.visible = (screenName = "sources")
-  m.videoPlayer.visible = (screenName = "player")
-
-  if m.currentScreen <> screenName
-    m.screenStack.Push(m.currentScreen)
+sub onHomeItemFocused(event as Object)
+  index = event.getData()
+  if index >= 0 and index < m.allMetas.Count()
+    setHero(m.allMetas[index])
   end if
-  m.currentScreen = screenName
+end sub
 
-  if screenName = "home"
+' ══════════════ NAVIGATION ══════════════
+
+sub showScreen(name as String)
+  m.homeScreen.visible = (name = "home")
+  m.detailScreen.visible = (name = "detail")
+  m.searchScreen.visible = (name = "search")
+  m.sourcesScreen.visible = (name = "sources")
+  m.videoPlayer.visible = (name = "player")
+
+  if m.currentScreen <> name then m.screenStack.Push(m.currentScreen)
+  m.currentScreen = name
+
+  if name = "home"
     m.navLabel.text = "Home"
-    m.contentRows.setFocus(true)
-  else if screenName = "detail"
+    m.homeGrid.setFocus(true)
+  else if name = "detail"
     m.navLabel.text = "Details"
     if m.sourceList.content <> invalid and m.sourceList.content.getChildCount() > 0
       m.sourceList.setFocus(true)
     else
-      m.noSrcLabel.setFocus(true)
+      m.detailTitle.setFocus(true)
     end if
-  else if screenName = "search"
+  else if name = "search"
     m.navLabel.text = "Search"
-    m.searchKeyboard.setFocus(true)
-  else if screenName = "sources"
+    m.searchGrid.setFocus(true)
+  else if name = "sources"
     m.navLabel.text = "Sources"
     m.addonList.setFocus(true)
-  else if screenName = "player"
+  else if name = "player"
     m.navLabel.text = ""
     m.videoPlayer.setFocus(true)
   end if
@@ -292,7 +238,6 @@ sub goBack()
     showScreen("detail")
     return
   end if
-
   if m.screenStack.Count() > 0
     prev = m.screenStack.Pop()
     m.currentScreen = ""
@@ -300,24 +245,22 @@ sub goBack()
   end if
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' DETAIL SCREEN
-' ═══════════════════════════════════════════════════════════
+' ══════════════ DETAIL ══════════════
 
 sub showDetail(meta as Object)
   if meta = invalid then return
-
   m.currentMeta = meta
   m.detailTitle.text = meta.name
 
-  metaParts = []
-  if meta.releaseInfo <> invalid then metaParts.Push(meta.releaseInfo)
-  if meta.type <> invalid then metaParts.Push(UCase(meta.type))
-  if meta.runtime <> invalid then metaParts.Push(meta.runtime)
-  m.detailMeta.text = metaParts.Join("  |  ")
+  parts = []
+  if meta.releaseInfo <> invalid then parts.Push(meta.releaseInfo)
+  if meta.type <> invalid then parts.Push(UCase(meta.type))
+  m.detailMeta.text = parts.Join("  |  ")
 
   if meta.description <> invalid
-    m.detailDesc.text = Left(meta.description, 300)
+    desc = meta.description
+    if Len(desc) > 250 then desc = Left(desc, 250) + "..."
+    m.detailDesc.text = desc
   else
     m.detailDesc.text = ""
   end if
@@ -336,48 +279,18 @@ sub showDetail(meta as Object)
     m.detailBg.uri = ""
   end if
 
-  ' Clear existing sources
   m.sourceList.content = CreateObject("roSGNode", "ContentNode")
   m.currentStreams = []
   m.noSrcLabel.visible = true
-  m.noSrcLabel.text = "Loading streams..."
+  m.noSrcLabel.text = "Loading sources..."
   m.sourceList.visible = false
-
   showScreen("detail")
 
-  ' Load streams in background
   videoId = meta.id
   if meta.behaviorHints <> invalid and meta.behaviorHints.defaultVideoId <> invalid
     videoId = meta.behaviorHints.defaultVideoId
   end if
-
-  startTask("loadStreams", {
-    contentType: meta.type,
-    contentId: videoId
-  })
-end sub
-
-sub onStreamsLoaded(result as Object)
-  streams = result.streams
-  m.currentStreams = streams
-
-  sourceContent = CreateObject("roSGNode", "ContentNode")
-  for each stream in streams
-    node = sourceContent.CreateChild("ContentNode")
-    node.title = stream.label + "  [" + UCase(stream.format) + "]"
-  end for
-
-  m.sourceList.content = sourceContent
-
-  if streams.Count() > 0
-    m.noSrcLabel.visible = false
-    m.sourceList.visible = true
-    m.sourceList.setFocus(true)
-  else
-    m.noSrcLabel.visible = true
-    m.noSrcLabel.text = "No playable sources found. Add a playback addon."
-    m.sourceList.visible = false
-  end if
+  runTask("loadStreams", { contentType: meta.type, contentId: videoId })
 end sub
 
 sub onSourceSelected(event as Object)
@@ -390,22 +303,17 @@ sub onSourceSelected(event as Object)
   end if
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' VIDEO PLAYBACK
-' ═══════════════════════════════════════════════════════════
+' ══════════════ PLAYBACK ══════════════
 
-sub playStream(streamUrl as String, streamFormat as String, title as String)
-  videoContent = CreateObject("roSGNode", "ContentNode")
-  videoContent.url = streamUrl
-  videoContent.title = title
-  videoContent.streamFormat = streamFormat
-
-  if m.currentMeta <> invalid
-    if m.currentMeta.poster <> invalid then videoContent.hdPosterUrl = m.currentMeta.poster
-    if m.currentMeta.description <> invalid then videoContent.description = m.currentMeta.description
+sub playStream(url as String, fmt as String, title as String)
+  vc = CreateObject("roSGNode", "ContentNode")
+  vc.url = url
+  vc.title = title
+  vc.streamFormat = fmt
+  if m.currentMeta <> invalid and m.currentMeta.poster <> invalid
+    vc.hdPosterUrl = m.currentMeta.poster
   end if
-
-  m.videoPlayer.content = videoContent
+  m.videoPlayer.content = vc
   m.videoPlayer.control = "play"
   showScreen("player")
 end sub
@@ -419,44 +327,60 @@ sub onVideoStateChange()
   end if
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' SEARCH
-' ═══════════════════════════════════════════════════════════
+' ══════════════ SEARCH ══════════════
 
-sub onSearchItemSelected(event as Object)
-  index = event.getData()
-  gridContent = m.searchGrid.content
-  if gridContent = invalid then return
+sub openSearchDialog()
+  dialog = createObject("roSGNode", "KeyboardDialog")
+  dialog.title = "Search NovaCast"
+  dialog.buttons = ["Search", "Cancel"]
+  dialog.observeField("buttonSelected", "onSearchDialogButton")
+  m.top.dialog = dialog
+end sub
 
-  item = gridContent.getChild(index)
-  if item = invalid then return
+sub onSearchDialogButton()
+  dialog = m.top.dialog
+  if dialog = invalid then return
 
-  metaId = ""
-  if item.hasField("metaId") then metaId = item.metaId
-
-  foundMeta = findMetaById(metaId)
-  if foundMeta <> invalid
-    showDetail(foundMeta)
+  buttonIndex = dialog.buttonSelected
+  if buttonIndex = 0
+    ' Search button pressed
+    query = dialog.text
+    if query <> invalid and Len(query) >= 2
+      m.searchInfo.text = "Searching..."
+      dialog.close = true
+      runTask("search", { searchQuery: query })
+    end if
+  else
+    ' Cancel
+    dialog.close = true
   end if
 end sub
 
-' ═══════════════════════════════════════════════════════════
-' KEY HANDLING
-' ═══════════════════════════════════════════════════════════
+sub onSearchItemSelected(event as Object)
+  index = event.getData()
+  if index >= 0 and index < m.searchMetas.Count()
+    showDetail(m.searchMetas[index])
+  end if
+end sub
+
+' ══════════════ KEY HANDLING ══════════════
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
   if not press then return false
 
   if key = "back"
-    if m.currentScreen = "home"
-      return false
-    end if
+    if m.currentScreen = "home" then return false
     goBack()
     return true
   end if
 
   if key = "options"
     showScreen("sources")
+    return true
+  end if
+
+  if key = "replay"
+    openSearchDialog()
     return true
   end if
 
@@ -470,88 +394,5 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     end if
   end if
 
-  ' Star button → Search
-  if key = "replay"
-    showScreen("search")
-    return true
-  end if
-
-  ' Search keyboard submit
-  if m.currentScreen = "search"
-    if key = "down" and m.searchKeyboard.isInFocusChain()
-      query = ""
-      if m.searchKeyboard.text <> invalid then query = m.searchKeyboard.text
-      if query <> "" and Len(query) >= 2
-        m.searchInfo.text = "Searching..."
-        startTask("search", { searchQuery: query })
-        m.searchGrid.setFocus(true)
-      end if
-      return true
-    else if key = "up" and m.searchGrid.isInFocusChain()
-      m.searchKeyboard.setFocus(true)
-      return true
-    end if
-  end if
-
-  ' Update hero on home focus change
-  if m.currentScreen = "home" and (key = "left" or key = "right")
-    updateHeroFromFocus()
-  end if
-
   return false
-end function
-
-sub onSearchResults(result as Object)
-  results = result.results
-
-  searchContent = CreateObject("roSGNode", "ContentNode")
-  for each meta in results
-    node = searchContent.CreateChild("ContentNode")
-    node.title = meta.name
-    if meta.poster <> invalid then node.hdPosterUrl = meta.poster
-    if meta.releaseInfo <> invalid then node.shortDescriptionLine2 = meta.releaseInfo
-    node.addFields({ metaId: "", metaType: "" })
-    if meta.id <> invalid then node.metaId = meta.id
-    if meta.type <> invalid then node.metaType = meta.type
-  end for
-
-  m.searchGrid.content = searchContent
-  m.searchInfo.text = results.Count().ToStr() + " results found"
-end sub
-
-sub onMetaLoaded(result as Object)
-  if result.meta <> invalid
-    showDetail(result.meta)
-  end if
-end sub
-
-sub updateHeroFromFocus()
-  indices = m.contentRows.rowItemFocused
-  if indices = invalid or type(indices) <> "roArray" or indices.Count() < 2 then return
-
-  rowContent = m.contentRows.content
-  if rowContent = invalid then return
-
-  row = rowContent.getChild(indices[0])
-  if row = invalid then return
-
-  item = row.getChild(indices[1])
-  if item = invalid then return
-
-  metaId = ""
-  if item.hasField("metaId") then metaId = item.metaId
-
-  foundMeta = findMetaById(metaId)
-  if foundMeta <> invalid
-    setHero(foundMeta)
-  end if
-end sub
-
-function findMetaById(id as String) as Object
-  for each meta in m.allMetas
-    if meta.id <> invalid and meta.id = id
-      return meta
-    end if
-  end for
-  return invalid
 end function
