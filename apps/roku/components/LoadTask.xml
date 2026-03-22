@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="LoadTask" extends="Task">
+  <interface>
+    <field id="action" type="string" />
+    <field id="transportUrls" type="stringarray" />
+    <field id="contentType" type="string" />
+    <field id="contentId" type="string" />
+    <field id="searchQuery" type="string" />
+    <field id="result" type="assocarray" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/LoadTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/services/HttpClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/services/CatalogClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/services/StreamClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/services/AddonRegistry.brs" />
+</component>

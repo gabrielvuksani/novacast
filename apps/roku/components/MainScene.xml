@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="MainScene" extends="Scene">
   <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
-  <script type="text/brightscript" uri="pkg:/source/services/HttpClient.brs" />
-  <script type="text/brightscript" uri="pkg:/source/services/AddonRegistry.brs" />
-  <script type="text/brightscript" uri="pkg:/source/services/CatalogClient.brs" />
-  <script type="text/brightscript" uri="pkg:/source/services/StreamClient.brs" />
 
   <children>
     <!-- Background -->
@@ -15,19 +11,17 @@
     <Label id="appTitle" translation="[60,18]" text="NovaCast" font="font:LargeBoldSystemFont" color="0x67E8F9FF" />
     <Label id="navLabel" translation="[280,26]" text="" font="font:SmallSystemFont" color="0xA8B2CCFF" />
 
-    <!-- ═══ HOME SCREEN ═══ -->
+    <!-- HOME SCREEN -->
     <Group id="homeScreen" visible="true" translation="[0,72]">
-      <!-- Hero area -->
       <Poster id="heroPoster" width="1920" height="500" translation="[0,0]" loadDisplayMode="scaleToZoom" />
       <Rectangle id="heroOverlayLeft" width="960" height="500" color="0x080C18DD" />
       <Rectangle id="heroOverlayBottom" width="1920" height="180" translation="[0,320]" color="0x080C18FF" opacity="0.92" />
 
-      <Label id="heroTitle" translation="[60,300]" width="800" text="Welcome to NovaCast" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Label id="heroDesc" translation="[60,365]" width="700" text="Your universe of entertainment" font="font:SmallSystemFont" color="0xA8B2CCFF" maxLines="2" />
+      <Label id="heroTitle" translation="[60,300]" width="800" text="NovaCast" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
+      <Label id="heroDesc" translation="[60,365]" width="700" text="Loading..." font="font:SmallSystemFont" color="0xA8B2CCFF" maxLines="2" />
       <Label id="heroMeta" translation="[60,420]" text="" font="font:SmallSystemFont" color="0x67E8F9FF" />
 
-      <!-- Content rows -->
-      <Label id="rowLabel" translation="[60,470]" text="Trending Now" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+      <Label id="rowLabel" translation="[60,470]" text="Browse" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
       <RowList id="contentRows" translation="[0,510]"
                itemSize="[1860,260]"
                numRows="3"
@@ -43,7 +37,7 @@
                vertFocusAnimationStyle="floatingFocus" />
     </Group>
 
-    <!-- ═══ DETAIL SCREEN ═══ -->
+    <!-- DETAIL SCREEN -->
     <Group id="detailScreen" visible="false" translation="[0,72]">
       <Poster id="detailBg" width="1920" height="550" translation="[0,0]" loadDisplayMode="scaleToZoom" />
       <Rectangle id="detailOverlay" width="1920" height="550" color="0x080C18CC" />
@@ -59,10 +53,10 @@
                  itemSize="[800,54]" itemSpacing="[0,6]"
                  focusedColor="0x67E8F9FF" color="0xA8B2CCFF"
                  focusBitmapBlendColor="0x67E8F920" />
-      <Label id="noSrcLabel" translation="[60,530]" text="No playable sources found. Install a playback source." font="font:SmallSystemFont" color="0xF59E0BFF" visible="false" />
+      <Label id="noSrcLabel" translation="[60,530]" text="No playable sources found." font="font:SmallSystemFont" color="0xF59E0BFF" visible="false" />
     </Group>
 
-    <!-- ═══ SEARCH SCREEN ═══ -->
+    <!-- SEARCH SCREEN -->
     <Group id="searchScreen" visible="false" translation="[0,72]">
       <Label id="searchHeading" translation="[60,20]" text="Search" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
       <MiniKeyboard id="searchKeyboard" translation="[60,80]" />
@@ -75,7 +69,7 @@
                   focusBitmapBlendColor="0x67E8F920" />
     </Group>
 
-    <!-- ═══ SOURCES SCREEN ═══ -->
+    <!-- SOURCES SCREEN -->
     <Group id="sourcesScreen" visible="false" translation="[0,72]">
       <Label id="sourcesHeading" translation="[60,20]" text="Sources" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
       <Label id="sourcesSub" translation="[60,60]" text="Addons powering your NovaCast experience" font="font:SmallSystemFont" color="0xA8B2CCFF" />
@@ -85,12 +79,12 @@
                  focusBitmapBlendColor="0x67E8F920" />
     </Group>
 
-    <!-- ═══ VIDEO PLAYER ═══ -->
+    <!-- VIDEO PLAYER -->
     <Video id="videoPlayer" visible="false" translation="[0,0]" width="1920" height="1080"
            enableUI="true" enableTrickPlay="true" />
 
     <!-- Bottom hint bar -->
     <Rectangle id="hintBg" width="1920" height="40" translation="[0,1040]" color="0x0C101CBB" />
-    <Label id="hintText" translation="[60,1048]" text="OK: Select  |  Back: Return  |  *: Search  |  Options: Sources" font="font:SmallestSystemFont" color="0x6B7A9EFF" />
+    <Label id="hintText" translation="[60,1048]" text="OK: Select  |  Back: Return  |  Replay: Search  |  Options: Sources" font="font:SmallestSystemFont" color="0x6B7A9EFF" />
   </children>
 </component>
