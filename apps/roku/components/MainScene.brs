@@ -8,7 +8,7 @@ sub init()
   m.detailScreen = m.top.findNode("detailScreen")
   m.searchScreen = m.top.findNode("searchScreen")
   m.sourcesScreen = m.top.findNode("sourcesScreen")
-  m.videoPlayer = m.top.findNode("videoPlayer")
+  m.playerScreen = m.top.findNode("playerScreen")
 
   m.heroPoster = m.top.findNode("heroPoster")
   m.heroType = m.top.findNode("heroType")
@@ -40,7 +40,7 @@ sub init()
   m.currentStreams = []
 
   ' Observers
-  m.videoPlayer.observeField("state", "onVideoStateChange")
+  m.playerScreen.observeField("action", "onPlayerAction")
   m.homeGrid.observeField("itemSelected", "onHomeItemSelected")
   m.homeGrid.observeField("itemFocused", "onHomeItemFocused")
   m.sourceList.observeField("itemSelected", "onSourceSelected")
@@ -244,7 +244,7 @@ sub activateScreen(name as String)
   m.detailScreen.visible = false
   m.searchScreen.visible = false
   m.sourcesScreen.visible = false
-  m.videoPlayer.visible = false
+  m.playerScreen.visible = false
 
   ' Show target screen
   m.currentScreen = name
@@ -270,9 +270,9 @@ sub activateScreen(name as String)
     m.navLabel.text = "Sources"
     m.addonList.setFocus(true)
   else if name = "player"
-    m.videoPlayer.visible = true
+    m.playerScreen.visible = true
     m.navLabel.text = ""
-    m.videoPlayer.setFocus(true)
+    m.playerScreen.setFocus(true)
   end if
 end sub
 
@@ -376,28 +376,16 @@ sub playStream(url as String, fmt as String, title as String)
     return
   end if
 
-  ' Stop any existing playback
-  m.videoPlayer.control = "stop"
-
-  ' Configure video player for best experience
-  m.videoPlayer.enableUI = true
-  m.videoPlayer.enableTrickPlay = true
-
-  ' HTTPS certificate support (fixes error -3 on HTTPS streams)
-  m.videoPlayer.setCertificatesFile("common:/certs/ca-bundle.crt")
-  m.videoPlayer.initClientCertificates()
-
   ' Create content node
   vc = CreateObject("roSGNode", "ContentNode")
   vc.url = url
   vc.title = title
   vc.streamFormat = fmt
 
-  ' Set poster for info screen
+  ' Set metadata
   if m.currentMeta <> invalid
     if m.currentMeta.poster <> invalid then vc.hdPosterUrl = m.currentMeta.poster
     if m.currentMeta.description <> invalid then vc.description = m.currentMeta.description
-    if m.currentMeta.releaseInfo <> invalid then vc.releaseDate = m.currentMeta.releaseInfo
   end if
 
   ' Adaptive streaming settings
@@ -405,32 +393,15 @@ sub playStream(url as String, fmt as String, title as String)
     vc.switchingStrategy = "full-adaptation"
   end if
 
-  ' Set content and play
-  m.videoPlayer.content = vc
-  m.videoPlayer.control = "play"
+  ' Set content on custom player (triggers playback)
+  m.playerScreen.content = vc
   navigateTo("player")
 end sub
 
-sub onVideoStateChange()
-  state = m.videoPlayer.state
-
-  if state = "error"
-    m.videoPlayer.control = "stop"
-    m.videoPlayer.visible = false
-
-    if m.screenStack.Count() > 0
-      prev = m.screenStack.Pop()
-      activateScreen(prev)
-    else
-      activateScreen("home")
-    end if
-
-    showPlaybackError("This source could not be played. Choose a source labeled [HLS] for best results on Roku.")
-
-  else if state = "finished"
-    m.videoPlayer.control = "stop"
-    m.videoPlayer.visible = false
-
+sub onPlayerAction()
+  action = m.playerScreen.action
+  if action = "close"
+    m.playerScreen.visible = false
     if m.screenStack.Count() > 0
       prev = m.screenStack.Pop()
       activateScreen(prev)
