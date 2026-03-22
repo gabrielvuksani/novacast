@@ -2,6 +2,7 @@ function CreateAddonRegistry() as Object
   registry = {
     defaultAddonUrls: [
       "https://v3-cinemeta.strem.io/manifest.json",
+      "https://nuviostreams.hayd.uk/manifest.json",
       "https://flixnest.app/flix-streams/manifest.json",
       "https://thepiratebay-plus.strem.fun/manifest.json",
       "https://torrentio.strem.fun/manifest.json",

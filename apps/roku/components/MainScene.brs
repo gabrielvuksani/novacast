@@ -181,7 +181,7 @@ sub onSearchResults(result as Object)
   end for
   m.searchGrid.content = searchContent
   m.searchInfo.text = m.searchMetas.Count().ToStr() + " results"
-  showScreen("search")
+  navigateTo("search")
   m.searchGrid.setFocus(true)
 end sub
 
@@ -230,20 +230,31 @@ end sub
 
 ' ══════════════ NAVIGATION ══════════════
 
-sub showScreen(name as String)
-  m.homeScreen.visible = (name = "home")
-  m.detailScreen.visible = (name = "detail")
-  m.searchScreen.visible = (name = "search")
-  m.sourcesScreen.visible = (name = "sources")
-  m.videoPlayer.visible = (name = "player")
+sub navigateTo(name as String)
+  ' Push current screen to back stack before switching
+  if m.currentScreen <> "" and m.currentScreen <> name
+    m.screenStack.Push(m.currentScreen)
+  end if
+  activateScreen(name)
+end sub
 
-  if m.currentScreen <> name then m.screenStack.Push(m.currentScreen)
+sub activateScreen(name as String)
+  ' Hide all screens
+  m.homeScreen.visible = false
+  m.detailScreen.visible = false
+  m.searchScreen.visible = false
+  m.sourcesScreen.visible = false
+  m.videoPlayer.visible = false
+
+  ' Show target screen
   m.currentScreen = name
 
   if name = "home"
+    m.homeScreen.visible = true
     m.navLabel.text = "Home"
     m.homeGrid.setFocus(true)
   else if name = "detail"
+    m.detailScreen.visible = true
     m.navLabel.text = "Details"
     if m.sourceList.content <> invalid and m.sourceList.content.getChildCount() > 0
       m.sourceList.setFocus(true)
@@ -251,12 +262,15 @@ sub showScreen(name as String)
       m.detailTitle.setFocus(true)
     end if
   else if name = "search"
+    m.searchScreen.visible = true
     m.navLabel.text = "Search"
     m.searchGrid.setFocus(true)
   else if name = "sources"
+    m.sourcesScreen.visible = true
     m.navLabel.text = "Sources"
     m.addonList.setFocus(true)
   else if name = "player"
+    m.videoPlayer.visible = true
     m.navLabel.text = ""
     m.videoPlayer.setFocus(true)
   end if
@@ -266,13 +280,13 @@ sub goBack()
   if m.currentScreen = "player"
     m.videoPlayer.control = "stop"
     m.videoPlayer.visible = false
-    showScreen("detail")
-    return
   end if
+
   if m.screenStack.Count() > 0
     prev = m.screenStack.Pop()
-    m.currentScreen = ""
-    showScreen(prev)
+    activateScreen(prev)
+  else
+    activateScreen("home")
   end if
 end sub
 
@@ -319,7 +333,7 @@ sub showDetail(meta as Object)
   m.noSrcLabel.visible = true
   m.noSrcLabel.text = "Loading sources..."
   m.sourceList.visible = false
-  showScreen("detail")
+  navigateTo("detail")
 
   videoId = meta.id
   if meta.behaviorHints <> invalid and meta.behaviorHints.defaultVideoId <> invalid
@@ -366,7 +380,7 @@ sub playStream(url as String, fmt as String, title as String)
   end if
   m.videoPlayer.content = vc
   m.videoPlayer.control = "play"
-  showScreen("player")
+  navigateTo("player")
 end sub
 
 sub onVideoStateChange()
@@ -374,7 +388,7 @@ sub onVideoStateChange()
   if state = "error" or state = "finished"
     m.videoPlayer.control = "stop"
     m.videoPlayer.visible = false
-    showScreen("detail")
+    navigateTo("detail")
   end if
 end sub
 
@@ -426,7 +440,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
   end if
 
   if key = "options"
-    showScreen("sources")
+    navigateTo("sources")
     return true
   end if
 
