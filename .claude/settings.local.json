@@ -6,7 +6,13 @@
       "Bash(git init:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run:*)",
+      "Bash(git push:*)",
+      "Bash(git filter-branch:*)"
     ]
   }
 }

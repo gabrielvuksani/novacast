@@ -2,7 +2,10 @@ function CreateAddonRegistry() as Object
   registry = {
     defaultAddonUrls: [
       "https://v3-cinemeta.strem.io/manifest.json",
-      "https://opensubtitles-v3.strem.io/manifest.json"
+      "https://thepiratebay-plus.strem.fun/manifest.json",
+      "https://torrentio.strem.fun/manifest.json",
+      "https://848b3516657c-usatv.baby-beamup.club/manifest.json",
+      "https://5a0d1888fa64-orion.baby-beamup.club/eyJhcGkiOiJGNzZIOE1BRUxURTZTRE1YOU5HS1ZTQTMyOERXR0U5RiIsImxpbmtMaW1pdCI6IjEwIiwic29ydFZhbHVlIjoiYmVzdCIsImF1ZGlvY2hhbm5lbHMiOiIyLDYsOCIsInZpZGVvcXVhbGl0eSI6ImhkOGssaGQ2ayxoZDRrLGhkMmssaGQxMDgwLGhkNzIwLHNkLHNjcjEwODAsc2NyNzIwLHNjcixjYW0xMDgwLGNhbTcyMCxjYW0iLCJsaXN0T3B0IjoidG9ycmVudCIsImRlYnJpZHNlcnZpY2VzIjpbXSwiYXVkaW9sYW5ndWFnZXMiOltdLCJhZGRpdGlvbmFsUGFyYW1ldGVycyI6IiJ9/manifest.json"
     ]
   }
 
@@ -11,7 +14,6 @@ function CreateAddonRegistry() as Object
     for each url in m.defaultAddonUrls
       manifest = HttpGetJson(url)
       if manifest <> invalid then
-        ' Parse resources to determine capabilities
         hasCatalog = false
         hasMeta = false
         hasStream = false
@@ -34,7 +36,6 @@ function CreateAddonRegistry() as Object
           end for
         end if
 
-        ' Check catalogs for search support
         if manifest.catalogs <> invalid
           hasCatalog = true
           for each catalog in manifest.catalogs
@@ -46,7 +47,6 @@ function CreateAddonRegistry() as Object
           end for
         end if
 
-        ' Determine role
         role = "utility"
         if hasStream and hasCatalog
           role = "hybrid"

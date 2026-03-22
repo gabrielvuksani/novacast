@@ -2,7 +2,10 @@ import type { Catalog } from './types';
 
 export const DEFAULT_ADDON_URLS = [
   'https://v3-cinemeta.strem.io/manifest.json',
-  'https://opensubtitles-v3.strem.io/manifest.json',
+  'https://thepiratebay-plus.strem.fun/manifest.json',
+  'https://torrentio.strem.fun/manifest.json',
+  'https://848b3516657c-usatv.baby-beamup.club/manifest.json',
+  'https://5a0d1888fa64-orion.baby-beamup.club/eyJhcGkiOiJGNzZIOE1BRUxURTZTRE1YOU5HS1ZTQTMyOERXR0U5RiIsImxpbmtMaW1pdCI6IjEwIiwic29ydFZhbHVlIjoiYmVzdCIsImF1ZGlvY2hhbm5lbHMiOiIyLDYsOCIsInZpZGVvcXVhbGl0eSI6ImhkOGssaGQ2ayxoZDRrLGhkMmssaGQxMDgwLGhkNzIwLHNkLHNjcjEwODAsc2NyNzIwLHNjcixjYW0xMDgwLGNhbTcyMCxjYW0iLCJsaXN0T3B0IjoidG9ycmVudCIsImRlYnJpZHNlcnZpY2VzIjpbXSwiYXVkaW9sYW5ndWFnZXMiOltdLCJhZGRpdGlvbmFsUGFyYW1ldGVycyI6IiJ9/manifest.json',
 ] as const;
 
 export const NOVACAST_DEFAULT_ADDON_ENV_KEYS = [

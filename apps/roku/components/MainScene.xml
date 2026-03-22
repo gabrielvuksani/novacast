@@ -3,84 +3,100 @@
   <script type="text/brightscript" uri="pkg:/components/MainScene.brs" />
 
   <children>
-    <!-- Background -->
+    <!-- Full background -->
     <Rectangle id="background" width="1920" height="1080" color="0x080C18FF" />
 
-    <!-- Header Bar -->
-    <Rectangle id="headerBg" width="1920" height="72" color="0x0C101CDD" />
-    <Label id="appTitle" translation="[60,18]" text="NovaCast" font="font:LargeBoldSystemFont" color="0x67E8F9FF" />
-    <Label id="navLabel" translation="[280,26]" text="Loading..." font="font:SmallSystemFont" color="0xA8B2CCFF" />
+    <!-- ━━━ HEADER ━━━ -->
+    <Group id="header" translation="[0,0]">
+      <Rectangle width="1920" height="80" color="0x080C1800" />
+      <Rectangle width="1920" height="1" translation="[0,79]" color="0xFFFFFF10" />
+      <Label id="appTitle" translation="[72,22]" text="NovaCast" font="font:LargeBoldSystemFont" color="0x67E8F9FF" />
+      <Label id="navLabel" translation="[300,30]" text="Loading..." font="font:SmallSystemFont" color="0x6B7A9EFF" />
+      <Label id="clockLabel" translation="[1760,30]" text="" font="font:SmallSystemFont" color="0x6B7A9EFF" horizAlign="right" width="100" />
+    </Group>
 
-    <!-- HOME SCREEN -->
-    <Group id="homeScreen" visible="true" translation="[0,72]">
-      <Poster id="heroPoster" width="1920" height="420" translation="[0,0]" loadDisplayMode="scaleToZoom" />
-      <Rectangle id="heroOverlay" width="1920" height="420" color="0x080C1899" />
-      <Rectangle id="heroGradBot" width="1920" height="120" translation="[0,300]" color="0x080C18FF" opacity="0.95" />
+    <!-- ━━━ HOME ━━━ -->
+    <Group id="homeScreen" visible="true" translation="[0,0]">
+      <!-- Hero backdrop (full width, behind header) -->
+      <Poster id="heroPoster" width="1920" height="580" translation="[0,0]" loadDisplayMode="scaleToZoom" opacity="0.6" />
+      <Rectangle width="1920" height="580" color="0x080C18AA" />
+      <Rectangle width="960" height="580" color="0x080C18DD" />
+      <Rectangle width="1920" height="200" translation="[0,380]" color="0x080C18FF" opacity="0.98" />
 
-      <Label id="heroTitle" translation="[60,240]" width="800" text="NovaCast" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Label id="heroDesc" translation="[60,300]" width="700" text="Your universe of entertainment" font="font:SmallSystemFont" color="0xA8B2CCFF" maxLines="2" />
-      <Label id="heroMeta" translation="[60,350]" text="" font="font:SmallSystemFont" color="0x67E8F9FF" />
+      <!-- Hero content -->
+      <Label id="heroType" translation="[72,320]" text="" font="font:SmallSystemFont" color="0x67E8F9CC" />
+      <Label id="heroTitle" translation="[72,345]" width="860" text="NovaCast" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
+      <Label id="heroDesc" translation="[72,410]" width="760" text="Your universe of entertainment" font="font:SmallSystemFont" color="0xA8B2CCEE" maxLines="2" />
+      <Label id="heroMeta" translation="[72,465]" text="" font="font:SmallSystemFont" color="0x67E8F9AA" />
 
-      <Label id="browseLabel" translation="[60,400]" text="Browse" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
-      <PosterGrid id="homeGrid" translation="[60,440]"
-                  basePosterSize="[200,300]"
-                  itemSpacing="[16,20]"
+      <!-- Content label -->
+      <Label id="browseLabel" translation="[72,520]" text="TRENDING NOW" font="font:SmallBoldSystemFont" color="0xA8B2CC88" />
+
+      <!-- Main poster grid -->
+      <PosterGrid id="homeGrid" translation="[72,555]"
+                  basePosterSize="[210,315]"
+                  itemSpacing="[18,24]"
                   numColumns="8"
                   numRows="2"
                   caption1NumLines="1"
-                  caption2NumLines="1"
-                  caption1Color="0xFFFFFFFF"
+                  caption2NumLines="0"
+                  caption1Color="0xFFFFFFDD"
                   caption2Color="0x6B7A9EFF"
-                  focusBitmapBlendColor="0x67E8F930" />
+                  focusBitmapBlendColor="0x67E8F940"
+                  loadingBitmapBlendColor="0x67E8F920" />
     </Group>
 
-    <!-- DETAIL SCREEN -->
-    <Group id="detailScreen" visible="false" translation="[0,72]">
-      <Poster id="detailBg" width="1920" height="500" translation="[0,0]" loadDisplayMode="scaleToZoom" />
-      <Rectangle id="detailOverlay" width="1920" height="500" color="0x080C18BB" />
-      <Rectangle id="detailGradBot" width="1920" height="160" translation="[0,340]" color="0x080C18FF" opacity="0.95" />
+    <!-- ━━━ DETAIL ━━━ -->
+    <Group id="detailScreen" visible="false" translation="[0,0]">
+      <Poster id="detailBg" width="1920" height="620" translation="[0,0]" loadDisplayMode="scaleToZoom" opacity="0.5" />
+      <Rectangle width="1920" height="620" color="0x080C18BB" />
+      <Rectangle width="1920" height="220" translation="[0,400]" color="0x080C18FF" opacity="0.98" />
 
-      <Label id="detailTitle" translation="[60,260]" width="900" text="" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Label id="detailMeta" translation="[60,320]" text="" font="font:SmallSystemFont" color="0x67E8F9FF" />
-      <Label id="detailDesc" translation="[60,350]" width="800" text="" font="font:SmallSystemFont" color="0xA8B2CCFF" maxLines="3" />
-      <Label id="detailGenres" translation="[60,420]" text="" font="font:SmallSystemFont" color="0x6B7A9EFF" />
+      <Label id="detailType" translation="[72,340]" text="" font="font:SmallSystemFont" color="0x67E8F9CC" />
+      <Label id="detailTitle" translation="[72,365]" width="920" text="" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
+      <Label id="detailMeta" translation="[72,430]" text="" font="font:SmallSystemFont" color="0x67E8F9AA" />
+      <Label id="detailDesc" translation="[72,460]" width="860" text="" font="font:SmallSystemFont" color="0xA8B2CCEE" maxLines="3" />
+      <Label id="detailGenres" translation="[72,530]" text="" font="font:SmallSystemFont" color="0x6B7A9E99" />
 
-      <Label id="srcLabel" translation="[60,470]" text="Sources" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
-      <LabelList id="sourceList" translation="[60,510]"
-                 itemSize="[800,54]" itemSpacing="[0,6]"
-                 focusedColor="0x67E8F9FF" color="0xA8B2CCFF"
-                 focusBitmapBlendColor="0x67E8F920" />
-      <Label id="noSrcLabel" translation="[60,510]" text="Loading..." font="font:SmallSystemFont" color="0xF59E0BFF" visible="false" />
+      <Label id="srcLabel" translation="[72,580]" text="SOURCES" font="font:SmallBoldSystemFont" color="0xA8B2CC88" />
+      <LabelList id="sourceList" translation="[72,610]"
+                 itemSize="[860,50]" itemSpacing="[0,4]"
+                 focusedColor="0x67E8F9FF" color="0xA8B2CCCC"
+                 focusBitmapBlendColor="0x67E8F920"
+                 drawFocusFeedback="true" />
+      <Label id="noSrcLabel" translation="[72,610]" text="Loading sources..." font="font:SmallSystemFont" color="0xF59E0BDD" visible="false" />
     </Group>
 
-    <!-- SEARCH RESULTS SCREEN -->
-    <Group id="searchScreen" visible="false" translation="[0,72]">
-      <Label id="searchHeading" translation="[60,20]" text="Search Results" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Label id="searchInfo" translation="[60,60]" text="" font="font:SmallSystemFont" color="0xA8B2CCFF" />
-      <PosterGrid id="searchGrid" translation="[60,100]"
-                  basePosterSize="[200,300]" itemSpacing="[16,20]"
+    <!-- ━━━ SEARCH RESULTS ━━━ -->
+    <Group id="searchScreen" visible="false" translation="[0,80]">
+      <Label id="searchHeading" translation="[72,24]" text="Search Results" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
+      <Label id="searchInfo" translation="[72,72]" text="" font="font:SmallSystemFont" color="0x6B7A9EFF" />
+      <PosterGrid id="searchGrid" translation="[72,110]"
+                  basePosterSize="[210,315]" itemSpacing="[18,24]"
                   numColumns="8" numRows="3"
                   caption1NumLines="1" caption2NumLines="1"
-                  caption1Color="0xFFFFFFFF" caption2Color="0x6B7A9EFF"
-                  focusBitmapBlendColor="0x67E8F920" />
+                  caption1Color="0xFFFFFFDD" caption2Color="0x6B7A9EFF"
+                  focusBitmapBlendColor="0x67E8F940" />
     </Group>
 
-    <!-- SOURCES SCREEN -->
-    <Group id="sourcesScreen" visible="false" translation="[0,72]">
-      <Label id="sourcesHeading" translation="[60,20]" text="Sources" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Label id="sourcesSub" translation="[60,60]" text="Addons powering NovaCast" font="font:SmallSystemFont" color="0xA8B2CCFF" />
-      <LabelList id="addonList" translation="[60,110]"
-                 itemSize="[800,70]" itemSpacing="[0,8]"
-                 focusedColor="0x67E8F9FF" color="0xA8B2CCFF"
-                 focusBitmapBlendColor="0x67E8F920" />
+    <!-- ━━━ SOURCES ━━━ -->
+    <Group id="sourcesScreen" visible="false" translation="[0,80]">
+      <Label id="sourcesHeading" translation="[72,24]" text="Sources" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
+      <Label id="sourcesSub" translation="[72,72]" text="Connected addons powering NovaCast" font="font:SmallSystemFont" color="0x6B7A9EFF" />
+      <LabelList id="addonList" translation="[72,120]"
+                 itemSize="[900,60]" itemSpacing="[0,6]"
+                 focusedColor="0x67E8F9FF" color="0xA8B2CCCC"
+                 focusBitmapBlendColor="0x67E8F920"
+                 drawFocusFeedback="true" />
     </Group>
 
-    <!-- VIDEO PLAYER -->
+    <!-- ━━━ VIDEO PLAYER ━━━ -->
     <Video id="videoPlayer" visible="false" translation="[0,0]" width="1920" height="1080"
            enableUI="true" enableTrickPlay="true" />
 
-    <!-- Bottom hint bar -->
-    <Rectangle id="hintBg" width="1920" height="40" translation="[0,1040]" color="0x0C101CBB" />
-    <Label id="hintText" translation="[60,1048]" text="OK: Select  |  Back: Return  |  *: Search  |  Options: Sources" font="font:SmallestSystemFont" color="0x6B7A9EFF" />
+    <!-- ━━━ BOTTOM BAR ━━━ -->
+    <Rectangle width="1920" height="36" translation="[0,1044]" color="0x080C18EE" />
+    <Rectangle width="1920" height="1" translation="[0,1044]" color="0xFFFFFF08" />
+    <Label id="hintText" translation="[72,1050]" text="OK Select  ·  Back Return  ·  * Search  ·  Options Sources" font="font:SmallestSystemFont" color="0x6B7A9E88" />
   </children>
 </component>

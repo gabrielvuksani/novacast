@@ -11,12 +11,14 @@ sub init()
   m.videoPlayer = m.top.findNode("videoPlayer")
 
   m.heroPoster = m.top.findNode("heroPoster")
+  m.heroType = m.top.findNode("heroType")
   m.heroTitle = m.top.findNode("heroTitle")
   m.heroDesc = m.top.findNode("heroDesc")
   m.heroMeta = m.top.findNode("heroMeta")
 
   m.homeGrid = m.top.findNode("homeGrid")
   m.detailBg = m.top.findNode("detailBg")
+  m.detailType = m.top.findNode("detailType")
   m.detailTitle = m.top.findNode("detailTitle")
   m.detailMeta = m.top.findNode("detailMeta")
   m.detailDesc = m.top.findNode("detailDesc")
@@ -163,6 +165,11 @@ end sub
 sub setHero(meta as Object)
   if meta = invalid then return
   m.heroTitle.text = meta.name
+  if meta.type <> invalid
+    m.heroType.text = UCase(meta.type)
+  else
+    m.heroType.text = ""
+  end if
   if meta.description <> invalid
     desc = meta.description
     if Len(desc) > 150 then desc = Left(desc, 150) + "..."
@@ -172,7 +179,6 @@ sub setHero(meta as Object)
   end if
   parts = []
   if meta.releaseInfo <> invalid then parts.Push(meta.releaseInfo)
-  if meta.type <> invalid then parts.Push(UCase(meta.type))
   m.heroMeta.text = parts.Join("  |  ")
   if meta.background <> invalid
     m.heroPoster.uri = meta.background
@@ -251,10 +257,14 @@ sub showDetail(meta as Object)
   if meta = invalid then return
   m.currentMeta = meta
   m.detailTitle.text = meta.name
+  if meta.type <> invalid
+    m.detailType.text = UCase(meta.type)
+  else
+    m.detailType.text = ""
+  end if
 
   parts = []
   if meta.releaseInfo <> invalid then parts.Push(meta.releaseInfo)
-  if meta.type <> invalid then parts.Push(UCase(meta.type))
   m.detailMeta.text = parts.Join("  |  ")
 
   if meta.description <> invalid
