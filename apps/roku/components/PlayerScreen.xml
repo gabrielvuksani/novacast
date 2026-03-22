@@ -7,86 +7,64 @@
   <script type="text/brightscript" uri="pkg:/components/PlayerScreen.brs" />
 
   <children>
-    <!-- Video (no native UI — we build our own) -->
     <Video id="video" width="1920" height="1080"
-           enableUI="false"
-           enableTrickPlay="false" />
+           enableUI="false" enableTrickPlay="false" />
 
-    <!-- Custom overlay (always on top of video) -->
+    <!-- Custom overlay -->
     <Group id="overlay" visible="true">
 
-      <!-- Top gradient -->
-      <Rectangle id="topGrad" width="1920" height="160" color="0x000000CC" />
-
-      <!-- Title bar -->
-      <Label id="titleLabel" translation="[72,36]" width="1200"
+      <!-- Top: gradient + title -->
+      <Rectangle width="1920" height="140" color="0x000000BB" />
+      <Rectangle width="1920" height="60" translation="[0,140]" color="0x00000066" />
+      <Label id="titleLabel" translation="[80,30]" width="1400"
              font="font:MediumBoldSystemFont" color="0xFFFFFFFF" text="" />
-      <Label id="subtitleLabel" translation="[72,72]" width="1000"
-             font="font:SmallSystemFont" color="0xA8B2CCDD" text="" />
+      <Label id="subtitleLabel" translation="[80,68]" width="1200"
+             font="font:SmallSystemFont" color="0xA8B2CCCC" text="" />
+      <Label translation="[1700,30]" text="NOVACAST" width="160"
+             font="font:SmallestBoldSystemFont" color="0x67E8F955" horizAlign="right" />
 
-      <!-- Bottom gradient -->
-      <Rectangle id="bottomGrad" width="1920" height="220" translation="[0,860]" color="0x000000CC" />
+      <!-- Bottom: controls area -->
+      <Rectangle width="1920" height="180" translation="[0,900]" color="0x000000BB" />
+      <Rectangle width="1920" height="40" translation="[0,860]" color="0x00000066" />
 
-      <!-- Progress bar area -->
-      <Group id="progressGroup" translation="[72,910]">
-        <!-- Time elapsed -->
-        <Label id="timeElapsed" translation="[0,0]" width="100"
-               font="font:SmallestSystemFont" color="0xFFFFFFCC" text="0:00" />
-
-        <!-- Progress bar background -->
-        <Rectangle id="progressBg" translation="[110,6]" width="1620" height="6"
-                   color="0xFFFFFF33" />
-
-        <!-- Buffered bar -->
-        <Rectangle id="bufferedBar" translation="[110,6]" width="0" height="6"
-                   color="0xFFFFFF55" />
-
-        <!-- Progress bar fill -->
-        <Rectangle id="progressFill" translation="[110,6]" width="0" height="6"
+      <!-- Progress bar -->
+      <Group id="progressGroup" translation="[80,920]">
+        <Label id="timeElapsed" width="90" font="font:SmallestSystemFont"
+               color="0xFFFFFFCC" text="0:00" />
+        <Rectangle id="progressBg" translation="[100,5]" width="1640" height="5"
+                   color="0xFFFFFF22" />
+        <Rectangle id="bufferedBar" translation="[100,5]" width="0" height="5"
+                   color="0xFFFFFF44" />
+        <Rectangle id="progressFill" translation="[100,5]" width="0" height="5"
                    color="0x67E8F9FF" />
-
-        <!-- Scrubber handle -->
-        <Rectangle id="scrubber" translation="[106,0]" width="16" height="18"
+        <Rectangle id="scrubber" translation="[96,0]" width="14" height="15"
                    color="0x67E8F9FF" />
-
-        <!-- Time remaining -->
-        <Label id="timeRemaining" translation="[1740,0]" width="110"
-               font="font:SmallestSystemFont" color="0xFFFFFF99" text="0:00"
+        <Label id="timeRemaining" translation="[1750,0]" width="100"
+               font="font:SmallestSystemFont" color="0xFFFFFF88" text="-0:00"
                horizAlign="right" />
       </Group>
 
-      <!-- Control buttons row -->
+      <!-- Playback controls -->
       <Group id="controlsRow" translation="[0,960]">
-        <!-- Rewind icon -->
-        <Label id="rwLabel" translation="[780,10]"
-               font="font:SmallSystemFont" color="0xFFFFFFAA" text="<< 10s" />
-
-        <!-- Play/Pause -->
-        <Rectangle id="playPauseBg" translation="[890,0]" width="140" height="40"
-                   color="0x67E8F920" />
-        <Label id="playPauseLabel" translation="[890,8]" width="140"
-               font="font:SmallBoldSystemFont" color="0xFFFFFFFF" text="  PAUSE"
+        <Label translation="[680,8]" font="font:SmallSystemFont" color="0xFFFFFF66" text="<< 10s" />
+        <Rectangle translation="[820,0]" width="280" height="40" color="0x67E8F918" />
+        <Label id="playPauseLabel" translation="[820,8]" width="280"
+               font="font:SmallBoldSystemFont" color="0xFFFFFFFF" text="  ||  PAUSE"
                horizAlign="center" />
-
-        <!-- Fast Forward icon -->
-        <Label id="ffLabel" translation="[1060,10]"
-               font="font:SmallSystemFont" color="0xFFFFFFAA" text="10s >>" />
+        <Label translation="[1140,8]" font="font:SmallSystemFont" color="0xFFFFFF66" text="10s >>" />
       </Group>
 
-      <!-- Status indicator -->
-      <Label id="statusLabel" translation="[860,500]" width="200"
-             font="font:MediumBoldSystemFont" color="0x67E8F9FF" text=""
-             horizAlign="center" visible="false" />
+      <!-- Control hints -->
+      <Label translation="[80,1010]" font="font:SmallestSystemFont" color="0xFFFFFF33"
+             text="OK Play/Pause  ·  Left/Right ±10s  ·  Up/Down ±30s  ·  * Subtitles  ·  Back Exit" />
 
-      <!-- Buffering spinner text -->
-      <Label id="bufferingLabel" translation="[810,520]" width="300"
-             font="font:SmallSystemFont" color="0xFFFFFFCC" text="Buffering..."
+      <!-- Center status -->
+      <Label id="statusLabel" translation="[810,480]" width="300"
+             font="font:LargeBoldSystemFont" color="0x67E8F9EE" text=""
              horizAlign="center" visible="false" />
-
-      <!-- Hint bar -->
-      <Label id="hintLabel" translation="[72,1030]"
-             font="font:SmallestSystemFont" color="0xFFFFFF44"
-             text="OK: Play/Pause  |  <</>>/Left/Right: Seek  |  Back: Exit  |  *: Subtitles" />
+      <Label id="bufferingLabel" translation="[810,530]" width="300"
+             font="font:SmallSystemFont" color="0xFFFFFFBB" text="Buffering..."
+             horizAlign="center" visible="false" />
     </Group>
   </children>
 </component>
