@@ -81,12 +81,9 @@ sub loadStreamsTask()
     if streamData <> invalid and streamData.streams <> invalid
       for each stream in streamData.streams
 
-        ' Skip streams marked notWebReady
-        if stream.behaviorHints <> invalid
-          if stream.behaviorHints.notWebReady <> invalid and stream.behaviorHints.notWebReady = true
-            continue for
-          end if
-        end if
+        ' NOTE: Do NOT skip notWebReady streams on Roku.
+        ' notWebReady means the web browser can't play them, but
+        ' Roku's native Video node handles HLS/DASH natively.
 
         playUrl = invalid
         isTorrent = false
@@ -147,7 +144,17 @@ sub loadStreamsTask()
     end if
   end for
 
-  m.top.result = { action: "streams", streams: streams }
+  ' Sort: HLS/DASH first, then direct files, then torrents
+  sorted = []
+  for each s in streams
+    if s.format = "hls" or s.format = "dash"
+      sorted.Unshift(s)
+    else
+      sorted.Push(s)
+    end if
+  end for
+
+  m.top.result = { action: "streams", streams: sorted }
 end sub
 
 function detectFormat(url as String) as String
