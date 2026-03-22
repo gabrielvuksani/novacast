@@ -1,14 +1,23 @@
 import type { Catalog } from './types';
 
 export const DEFAULT_ADDON_URLS = [
+  // ── Discovery (metadata / catalogs) ──
   'https://v3-cinemeta.strem.io/manifest.json',
-  'https://webstreamr.hayd.uk/manifest.json',
+
+  // ── Playback (direct HLS/MP4 streams) ──
   'https://nuviostreams.hayd.uk/manifest.json',
+  'https://webstreamr.hayd.uk/manifest.json',
   'https://flixnest.app/flix-streams/manifest.json',
-  'https://thepiratebay-plus.strem.fun/manifest.json',
+
+  // ── Torrent-based (need debrid for Roku, work on web) ──
   'https://torrentio.strem.fun/manifest.json',
-  'https://848b3516657c-usatv.baby-beamup.club/manifest.json',
+  'https://thepiratebay-plus.strem.fun/manifest.json',
   'https://5a0d1888fa64-orion.baby-beamup.club/eyJhcGkiOiJGNzZIOE1BRUxURTZTRE1YOU5HS1ZTQTMyOERXR0U5RiIsImxpbmtMaW1pdCI6IjEwIiwic29ydFZhbHVlIjoiYmVzdCIsImF1ZGlvY2hhbm5lbHMiOiIyLDYsOCIsInZpZGVvcXVhbGl0eSI6ImhkOGssaGQ2ayxoZDRrLGhkMmssaGQxMDgwLGhkNzIwLHNkLHNjcjEwODAsc2NyNzIwLHNjcixjYW0xMDgwLGNhbTcyMCxjYW0iLCJsaXN0T3B0IjoidG9ycmVudCIsImRlYnJpZHNlcnZpY2VzIjpbXSwiYXVkaW9sYW5ndWFnZXMiOltdLCJhZGRpdGlvbmFsUGFyYW1ldGVycyI6IiJ9/manifest.json',
+
+  // ── Live TV & Sports (direct HLS streams) ──
+  'https://848b3516657c-usatv.baby-beamup.club/manifest.json',
+  'https://iptv-stremio-addon.onrender.com/manifest.json',
+  'https://da5f663b4690-minhatv.baby-beamup.club/manifest.json',
 ] as const;
 
 export const NOVACAST_DEFAULT_ADDON_ENV_KEYS = [

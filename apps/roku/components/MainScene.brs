@@ -4,6 +4,7 @@ sub init()
 
   ' UI nodes
   m.homeScreen = m.top.findNode("homeScreen")
+  m.liveScreen = m.top.findNode("liveScreen")
   m.detailScreen = m.top.findNode("detailScreen")
   m.searchScreen = m.top.findNode("searchScreen")
   m.sourcesScreen = m.top.findNode("sourcesScreen")
@@ -16,6 +17,14 @@ sub init()
   m.heroDesc = m.top.findNode("heroDesc")
   m.heroMeta = m.top.findNode("heroMeta")
   m.homeGrid = m.top.findNode("homeGrid")
+  m.sectionLabel = m.top.findNode("sectionLabel")
+
+  m.liveGrid = m.top.findNode("liveGrid")
+  m.liveCount = m.top.findNode("liveCount")
+
+  m.tabHome = m.top.findNode("tabHome")
+  m.tabLive = m.top.findNode("tabLive")
+  m.tabSports = m.top.findNode("tabSports")
 
   m.detailBg = m.top.findNode("detailBg")
   m.detailPoster = m.top.findNode("detailPoster")
@@ -35,11 +44,15 @@ sub init()
   m.currentScreen = "home"
   m.screenStack = []
   m.allMetas = []
+  m.liveMetas = []
   m.searchMetas = []
   m.addons = []
   m.addonUrls = []
+  m.liveAddonUrls = []
   m.currentMeta = invalid
   m.currentStreams = []
+  m.catalogRows = []
+  m.activeTab = 0
 
   ' Observers
   m.playerScreen.observeField("action", "onPlayerAction")
@@ -47,12 +60,13 @@ sub init()
   m.homeGrid.observeField("itemFocused", "onHomeItemFocused")
   m.sourceList.observeField("itemSelected", "onSourceSelected")
   m.searchGrid.observeField("itemSelected", "onSearchItemSelected")
+  m.liveGrid.observeField("itemSelected", "onLiveItemSelected")
 
   m.homeGrid.setFocus(true)
   runTask("loadAddons")
 end sub
 
-' ═══════════ TASKS ═══════════
+' =========== TASKS ===========
 
 sub runTask(action as String, params = {} as Object)
   task = createObject("roSGNode", "LoadTask")
@@ -78,20 +92,27 @@ sub onTaskResult(event as Object)
   if result.action = "search" then onSearchResults(result)
 end sub
 
-' ═══════════ DATA ═══════════
+' =========== DATA ===========
 
 sub onAddonsLoaded(result as Object)
   m.addons = result.addons
   urls = []
+  liveUrls = []
   for each addon in m.addons
     urls.Push(addon.transportUrl)
+    if addon.isLive = true
+      liveUrls.Push(addon.transportUrl)
+    end if
   end for
   m.addonUrls = urls
+  m.liveAddonUrls = liveUrls
 
   content = CreateObject("roSGNode", "ContentNode")
   for each addon in m.addons
     node = content.CreateChild("ContentNode")
-    node.title = addon.name + "  ·  " + addon.role + "  ·  v" + addon.version
+    roleTag = addon.role
+    if addon.isLive = true then roleTag = roleTag + " + live"
+    node.title = addon.name + "  -  " + roleTag + "  -  v" + addon.version
   end for
   m.addonList.content = content
   m.statusLabel.text = m.addons.Count().ToStr() + " sources connected"
@@ -100,18 +121,58 @@ end sub
 
 sub onCatalogsLoaded(result as Object)
   m.allMetas = result.allMetas
+  m.catalogRows = result.rows
 
-  gridContent = CreateObject("roSGNode", "ContentNode")
+  ' Separate live content from regular content
+  regularMetas = []
+  liveMetas = []
   for each meta in m.allMetas
+    metaType = ""
+    if meta.type <> invalid then metaType = LCase(meta.type)
+    metaName = ""
+    if meta.name <> invalid then metaName = LCase(meta.name)
+
+    if metaType = "tv" or metaType = "channel" or Instr(1, metaName, "espn") > 0 or Instr(1, metaName, "fox sports") > 0 or Instr(1, metaName, "nfl") > 0 or Instr(1, metaName, "nba") > 0
+      liveMetas.Push(meta)
+    else
+      regularMetas.Push(meta)
+    end if
+  end for
+  m.liveMetas = liveMetas
+
+  ' Populate home grid with regular content
+  gridContent = CreateObject("roSGNode", "ContentNode")
+  for each meta in regularMetas
     node = gridContent.CreateChild("ContentNode")
     node.title = meta.name
     if meta.poster <> invalid then node.hdPosterUrl = meta.poster
     if meta.releaseInfo <> invalid then node.shortDescriptionLine2 = meta.releaseInfo
   end for
   m.homeGrid.content = gridContent
-  m.statusLabel.text = m.allMetas.Count().ToStr() + " titles available"
 
-  if m.allMetas.Count() > 0
+  ' Populate live grid
+  liveContent = CreateObject("roSGNode", "ContentNode")
+  for each meta in liveMetas
+    node = liveContent.CreateChild("ContentNode")
+    node.title = meta.name
+    if meta.poster <> invalid then node.hdPosterUrl = meta.poster
+    if meta.releaseInfo <> invalid then node.shortDescriptionLine2 = meta.releaseInfo
+  end for
+  m.liveGrid.content = liveContent
+  m.liveCount.text = liveMetas.Count().ToStr() + " channels"
+
+  ' Update status
+  totalCount = regularMetas.Count() + liveMetas.Count()
+  statusParts = [totalCount.ToStr() + " titles"]
+  if liveMetas.Count() > 0
+    statusParts.Push(liveMetas.Count().ToStr() + " live channels")
+  end if
+  m.statusLabel.text = statusParts.Join("  -  ")
+
+  if regularMetas.Count() > 0
+    setHero(regularMetas[0])
+    m.sectionLabel.text = "TRENDING"
+  else if m.allMetas.Count() > 0
     setHero(m.allMetas[0])
   else
     m.heroTitle.text = "NovaCast"
@@ -131,11 +192,17 @@ sub onStreamsLoaded(result as Object)
   for i = 0 to allStreams.Count() - 1
     stream = allStreams[i]
     node = srcContent.CreateChild("ContentNode")
+
+    addonTag = ""
+    if stream.addonName <> invalid and stream.addonName <> ""
+      addonTag = " (" + stream.addonName + ")"
+    end if
+
+    node.title = stream.label + addonTag
+
     if stream.playable = true
-      node.title = "  ▶  " + stream.label + "  [" + UCase(stream.format) + "]"
       playableCount = playableCount + 1
-    else
-      node.title = "  ✕  " + stream.label
+    else if stream.format = "torrent"
       torrentCount = torrentCount + 1
     end if
     m.currentStreams.Push(stream)
@@ -149,7 +216,11 @@ sub onStreamsLoaded(result as Object)
       m.noSrcLabel.visible = false
     else
       m.noSrcLabel.visible = true
-      m.noSrcLabel.text = torrentCount.ToStr() + " torrent sources (need debrid for Roku). Try [HLS] sources."
+      if torrentCount > 0
+        m.noSrcLabel.text = torrentCount.ToStr() + " torrent sources found. Need debrid for Roku."
+      else
+        m.noSrcLabel.text = "No playable streams found for Roku."
+      end if
     end if
     m.sourceList.setFocus(true)
   else
@@ -174,7 +245,7 @@ sub onSearchResults(result as Object)
   m.searchGrid.setFocus(true)
 end sub
 
-' ═══════════ HERO ═══════════
+' =========== HERO ===========
 
 sub setHero(meta as Object)
   if meta = invalid then return
@@ -196,7 +267,7 @@ sub setHero(meta as Object)
   if meta.genres <> invalid and type(meta.genres) = "roArray" and meta.genres.Count() > 0
     parts.Push(meta.genres[0])
   end if
-  m.heroMeta.text = parts.Join("  ·  ")
+  m.heroMeta.text = parts.Join("  -  ")
   if meta.background <> invalid
     m.heroPoster.uri = meta.background
   else if meta.poster <> invalid
@@ -206,19 +277,45 @@ end sub
 
 sub onHomeItemSelected(event as Object)
   index = event.getData()
-  if index >= 0 and index < m.allMetas.Count()
+  ' Get from regular metas (not live)
+  regularMetas = []
+  for each meta in m.allMetas
+    metaType = ""
+    if meta.type <> invalid then metaType = LCase(meta.type)
+    if metaType <> "tv" and metaType <> "channel"
+      regularMetas.Push(meta)
+    end if
+  end for
+  if index >= 0 and index < regularMetas.Count()
+    showDetail(regularMetas[index])
+  else if index >= 0 and index < m.allMetas.Count()
     showDetail(m.allMetas[index])
   end if
 end sub
 
 sub onHomeItemFocused(event as Object)
   index = event.getData()
-  if index >= 0 and index < m.allMetas.Count()
-    setHero(m.allMetas[index])
+  regularMetas = []
+  for each meta in m.allMetas
+    metaType = ""
+    if meta.type <> invalid then metaType = LCase(meta.type)
+    if metaType <> "tv" and metaType <> "channel"
+      regularMetas.Push(meta)
+    end if
+  end for
+  if index >= 0 and index < regularMetas.Count()
+    setHero(regularMetas[index])
   end if
 end sub
 
-' ═══════════ NAVIGATION ═══════════
+sub onLiveItemSelected(event as Object)
+  index = event.getData()
+  if index >= 0 and index < m.liveMetas.Count()
+    showDetail(m.liveMetas[index])
+  end if
+end sub
+
+' =========== NAVIGATION ===========
 
 sub navigateTo(name as String)
   if m.currentScreen <> "" and m.currentScreen <> name
@@ -229,6 +326,7 @@ end sub
 
 sub activateScreen(name as String)
   m.homeScreen.visible = false
+  m.liveScreen.visible = false
   m.detailScreen.visible = false
   m.searchScreen.visible = false
   m.sourcesScreen.visible = false
@@ -239,6 +337,11 @@ sub activateScreen(name as String)
   if name = "home"
     m.homeScreen.visible = true
     m.homeGrid.setFocus(true)
+    updateTabHighlight(0)
+  else if name = "live"
+    m.liveScreen.visible = true
+    m.liveGrid.setFocus(true)
+    updateTabHighlight(1)
   else if name = "detail"
     m.detailScreen.visible = true
     if m.sourceList.content <> invalid and m.sourceList.content.getChildCount() > 0
@@ -258,6 +361,22 @@ sub activateScreen(name as String)
   end if
 end sub
 
+sub updateTabHighlight(activeIndex as Integer)
+  m.activeTab = activeIndex
+  ' Reset all tabs
+  m.tabHome.color = "0x6B7A9EAA"
+  m.tabLive.color = "0x6B7A9EAA"
+  m.tabSports.color = "0x6B7A9EAA"
+
+  if activeIndex = 0
+    m.tabHome.color = "0xFFFFFFFF"
+  else if activeIndex = 1
+    m.tabLive.color = "0xFFFFFFFF"
+  else if activeIndex = 2
+    m.tabSports.color = "0xFFFFFFFF"
+  end if
+end sub
+
 sub goBack()
   if m.screenStack.Count() > 0
     prev = m.screenStack.Pop()
@@ -267,7 +386,7 @@ sub goBack()
   end if
 end sub
 
-' ═══════════ DETAIL ═══════════
+' =========== DETAIL ===========
 
 sub showDetail(meta as Object)
   if meta = invalid then return
@@ -282,7 +401,7 @@ sub showDetail(meta as Object)
   parts = []
   if meta.releaseInfo <> invalid then parts.Push(meta.releaseInfo)
   if meta.runtime <> invalid then parts.Push(meta.runtime)
-  m.detailMeta.text = parts.Join("  ·  ")
+  m.detailMeta.text = parts.Join("  -  ")
 
   if meta.description <> invalid
     desc = meta.description
@@ -293,12 +412,11 @@ sub showDetail(meta as Object)
   end if
 
   if meta.genres <> invalid and type(meta.genres) = "roArray"
-    m.detailGenres.text = meta.genres.Join("  ·  ")
+    m.detailGenres.text = meta.genres.Join("  -  ")
   else
     m.detailGenres.text = ""
   end if
 
-  ' Set images
   if meta.background <> invalid
     m.detailBg.uri = meta.background
   else if meta.poster <> invalid
@@ -313,7 +431,7 @@ sub showDetail(meta as Object)
     m.detailPoster.uri = ""
   end if
 
-  ' Clear sources
+  ' Clear sources and start loading
   m.sourceList.content = CreateObject("roSGNode", "ContentNode")
   m.currentStreams = []
   m.noSrcLabel.visible = true
@@ -325,7 +443,13 @@ sub showDetail(meta as Object)
   if meta.behaviorHints <> invalid and meta.behaviorHints.defaultVideoId <> invalid
     videoId = meta.behaviorHints.defaultVideoId
   end if
-  runTask("loadStreams", { contentType: meta.type, contentId: videoId })
+
+  contentType = "movie"
+  if meta.type <> invalid and meta.type <> ""
+    contentType = meta.type
+  end if
+
+  runTask("loadStreams", { contentType: contentType, contentId: videoId })
 end sub
 
 sub onSourceSelected(event as Object)
@@ -336,10 +460,18 @@ sub onSourceSelected(event as Object)
       title = ""
       if m.currentMeta <> invalid then title = m.currentMeta.name
       playStream(stream.url, stream.format, title)
+    else if stream.format = "external" and stream.url <> invalid and stream.url <> ""
+      ' Show message that external URLs are not supported on Roku
+      dialog = createObject("roSGNode", "StandardMessageDialog")
+      dialog.title = "External Link"
+      dialog.message = ["This source opens in a web browser.", "It cannot be played directly on Roku."]
+      dialog.buttons = ["OK"]
+      dialog.observeField("buttonSelected", "onDialogClose")
+      m.top.dialog = dialog
     else
       dialog = createObject("roSGNode", "StandardMessageDialog")
       dialog.title = "Not Playable on Roku"
-      dialog.message = ["This source requires a debrid service to", "convert torrents into direct streams.", "", "Try selecting a source marked with [HLS]."]
+      dialog.message = ["This source is a torrent and requires", "a debrid service to convert it into", "a direct stream for Roku playback.", "", "Try selecting a source marked [HLS]."]
       dialog.buttons = ["OK"]
       dialog.observeField("buttonSelected", "onDialogClose")
       m.top.dialog = dialog
@@ -351,7 +483,7 @@ sub onDialogClose()
   if m.top.dialog <> invalid then m.top.dialog.close = true
 end sub
 
-' ═══════════ PLAYBACK ═══════════
+' =========== PLAYBACK ===========
 
 sub playStream(url as String, fmt as String, title as String)
   if url = invalid or url = ""
@@ -362,11 +494,20 @@ sub playStream(url as String, fmt as String, title as String)
   vc = CreateObject("roSGNode", "ContentNode")
   vc.url = url
   vc.title = title
-  vc.streamFormat = fmt
+
+  ' Set stream format - default to hls if unknown
+  if fmt = "hls" or fmt = "dash" or fmt = "mp4" or fmt = "smooth"
+    vc.streamFormat = fmt
+  else
+    vc.streamFormat = "hls"
+  end if
+
   if m.currentMeta <> invalid
     if m.currentMeta.poster <> invalid then vc.hdPosterUrl = m.currentMeta.poster
     if m.currentMeta.description <> invalid then vc.description = m.currentMeta.description
   end if
+
+  ' Enable adaptive bitrate for HLS/DASH
   if fmt = "hls" or fmt = "dash" then vc.switchingStrategy = "full-adaptation"
 
   m.playerScreen.content = vc
@@ -395,7 +536,7 @@ sub showError(msg as String)
   m.top.dialog = dialog
 end sub
 
-' ═══════════ SEARCH ═══════════
+' =========== SEARCH ===========
 
 sub openSearchDialog()
   dialog = createObject("roSGNode", "KeyboardDialog")
@@ -428,7 +569,7 @@ sub onSearchItemSelected(event as Object)
   end if
 end sub
 
-' ═══════════ KEYS ═══════════
+' =========== KEYS ===========
 
 function onKeyEvent(key as String, press as Boolean) as Boolean
   if not press then return false
@@ -449,8 +590,21 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
     return true
   end if
 
-  if key = "play"
-    if m.currentScreen = "detail" and m.currentStreams.Count() > 0
+  ' Tab switching on home screen with left/right when grid is at edge
+  if m.currentScreen = "home"
+    if key = "right"
+      ' Check if we should switch to live tab
+      ' Only switch if we are pressing right and the grid's focus is at the far right
+    end if
+    if key = "left"
+      ' If on live screen, go back to home
+    end if
+  end if
+
+  ' Quick tab switch: left on live goes to home, "play" on home with live content goes to live
+  if m.currentScreen = "home" and key = "play"
+    ' If on detail, try to auto-play first playable stream
+    if m.currentStreams.Count() > 0
       for each stream in m.currentStreams
         if stream.playable = true and stream.url <> invalid and stream.url <> ""
           title = ""
@@ -460,6 +614,22 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
         end if
       end for
     end if
+    ' Otherwise switch to live tab
+    if m.liveMetas.Count() > 0
+      navigateTo("live")
+      return true
+    end if
+  end if
+
+  if m.currentScreen = "detail" and key = "play"
+    for each stream in m.currentStreams
+      if stream.playable = true and stream.url <> invalid and stream.url <> ""
+        title = ""
+        if m.currentMeta <> invalid then title = m.currentMeta.name
+        playStream(stream.url, stream.format, title)
+        return true
+      end if
+    end for
   end if
 
   return false

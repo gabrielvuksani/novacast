@@ -15,18 +15,26 @@ sub init()
   ' State
   m.isPlaying = false
   m.controlsVisible = true
-  m.hideTimer = invalid
   m.progressBarWidth = 1620
   m.progressBarX = 110
+  m.retryCount = 0
+  m.maxRetries = 2
 
-  ' HTTPS certs for video
+  ' HTTPS certs for video — MUST be set before any playback
   m.video.setCertificatesFile("common:/certs/ca-bundle.crt")
   m.video.initClientCertificates()
+
+  ' Enable trickplay and native UI as fallback
+  m.video.enableTrickPlay = false
+  m.video.enableUI = false
 
   ' Observe video state
   m.video.observeField("state", "onStateChange")
   m.video.observeField("position", "onPositionChange")
   m.video.observeField("bufferingStatus", "onBufferingChange")
+  m.video.observeField("errorCode", "onErrorCode")
+  m.video.observeField("errorMsg", "onErrorMsg")
+  m.video.observeField("downloadSpeed", "onDownloadSpeed")
 
   ' Observe content changes
   m.top.observeField("content", "onContentSet")
@@ -37,7 +45,12 @@ sub init()
   m.hideTimer.repeat = false
   m.hideTimer.observeField("fire", "onHideControls")
 
-  ' Keep focus on this component (NOT on video) for key events
+  ' Buffering stall detector
+  m.stallTimer = createObject("roSGNode", "Timer")
+  m.stallTimer.duration = 30
+  m.stallTimer.repeat = false
+  m.stallTimer.observeField("fire", "onStallTimeout")
+
   m.top.setFocus(true)
 end sub
 
@@ -50,13 +63,57 @@ sub onContentSet()
     desc = contentNode.description
     if Len(desc) > 60 then desc = Left(desc, 57) + "..."
     m.subtitleLabel.text = desc
+  else
+    m.subtitleLabel.text = ""
   end if
+
+  ' Reset retry counter
+  m.retryCount = 0
+
+  ' Validate the URL before attempting playback
+  streamUrl = ""
+  if contentNode.url <> invalid then streamUrl = contentNode.url
+  if streamUrl = "" or streamUrl = invalid
+    showStatus("No stream URL")
+    closeAfterDelay(2)
+    return
+  end if
+
+  ' Validate stream format
+  fmt = ""
+  if contentNode.streamFormat <> invalid then fmt = LCase(contentNode.streamFormat)
+
+  ' Only allow formats Roku can actually play
+  if fmt <> "hls" and fmt <> "dash" and fmt <> "mp4" and fmt <> "smooth"
+    ' Default to HLS for unknown formats — Roku handles this gracefully
+    contentNode.streamFormat = "hls"
+  end if
+
+  ' Add HTTP headers if the stream needs them
+  addStreamHeaders(contentNode)
 
   m.video.content = contentNode
   m.video.control = "play"
   m.isPlaying = true
   updatePlayPause()
   showControls()
+
+  ' Start stall detector
+  m.stallTimer.control = "stop"
+  m.stallTimer.control = "start"
+end sub
+
+sub addStreamHeaders(contentNode as Object)
+  ' Some streams need a User-Agent or Referer header
+  url = contentNode.url
+  if url = invalid then return
+
+  lowUrl = LCase(url)
+
+  ' For streams that commonly need headers, add them
+  if Instr(1, lowUrl, "vixsrc") > 0 or Instr(1, lowUrl, "febbox") > 0
+    contentNode.HttpHeaders = ["User-Agent: Mozilla/5.0 (Roku; SceneGraph) NovaCast/1.0"]
+  end if
 end sub
 
 ' ══════════════ VIDEO STATE ══════════════
@@ -67,8 +124,11 @@ sub onStateChange()
   if state = "playing"
     m.isPlaying = true
     m.bufferingLabel.visible = false
+    m.retryCount = 0
     updatePlayPause()
     startHideTimer()
+    ' Cancel stall timer since we started playing
+    m.stallTimer.control = "stop"
 
   else if state = "paused"
     m.isPlaying = false
@@ -77,12 +137,97 @@ sub onStateChange()
 
   else if state = "buffering"
     m.bufferingLabel.visible = true
+    m.bufferingLabel.text = "Buffering..."
     showControls()
+    ' Restart stall timer
+    m.stallTimer.control = "stop"
+    m.stallTimer.control = "start"
 
-  else if state = "error" or state = "finished"
+  else if state = "error"
+    handlePlaybackError()
+
+  else if state = "finished"
     m.video.control = "stop"
     m.top.action = "close"
+
+  else if state = "stopped"
+    ' Normal stop — do nothing
   end if
+end sub
+
+sub handlePlaybackError()
+  errorCode = 0
+  if m.video.errorCode <> invalid then errorCode = m.video.errorCode
+  errorMsg = ""
+  if m.video.errorMsg <> invalid then errorMsg = m.video.errorMsg
+
+  m.video.control = "stop"
+
+  ' Try switching format on error -3 or -5
+  if (errorCode = -3 or errorCode = -5) and m.retryCount < m.maxRetries
+    m.retryCount = m.retryCount + 1
+    contentNode = m.video.content
+
+    if contentNode <> invalid and contentNode.url <> invalid
+      currentFmt = ""
+      if contentNode.streamFormat <> invalid then currentFmt = contentNode.streamFormat
+
+      ' Cycle through formats: hls -> mp4 -> dash
+      if currentFmt = "hls"
+        contentNode.streamFormat = "mp4"
+        showStatus("Retrying as MP4...")
+      else if currentFmt = "mp4"
+        contentNode.streamFormat = "dash"
+        showStatus("Retrying as DASH...")
+      else
+        contentNode.streamFormat = "hls"
+        showStatus("Retrying as HLS...")
+      end if
+
+      m.video.content = contentNode
+      m.video.control = "play"
+      return
+    end if
+  end if
+
+  ' All retries exhausted — show error and close
+  errLabel = "Playback error"
+  if errorCode <> 0 then errLabel = "Error " + errorCode.ToStr()
+  if errorMsg <> "" then errLabel = errLabel + ": " + errorMsg
+
+  showStatus(errLabel)
+  closeAfterDelay(3)
+end sub
+
+sub onErrorCode()
+  ' Logged for debugging — actual handling happens in onStateChange
+end sub
+
+sub onErrorMsg()
+  ' Logged for debugging — actual handling happens in onStateChange
+end sub
+
+sub onStallTimeout()
+  ' If we've been buffering for 30 seconds, the stream is likely dead
+  state = m.video.state
+  if state = "buffering"
+    showStatus("Stream timed out")
+    m.video.control = "stop"
+    closeAfterDelay(2)
+  end if
+end sub
+
+sub closeAfterDelay(seconds as Integer)
+  closeTimer = createObject("roSGNode", "Timer")
+  closeTimer.duration = seconds
+  closeTimer.repeat = false
+  closeTimer.observeField("fire", "onCloseTimerFire")
+  closeTimer.control = "start"
+  m.closeTimer = closeTimer
+end sub
+
+sub onCloseTimerFire()
+  m.top.action = "close"
 end sub
 
 sub onPositionChange()
@@ -116,6 +261,10 @@ sub onBufferingChange()
       m.bufferingLabel.visible = false
     end if
   end if
+end sub
+
+sub onDownloadSpeed()
+  ' Could display download speed in UI if desired
 end sub
 
 ' ══════════════ CONTROLS VISIBILITY ══════════════
@@ -166,9 +315,9 @@ end sub
 
 sub updatePlayPause()
   if m.isPlaying
-    m.playPauseLabel.text = "  PAUSE"
+    m.playPauseLabel.text = "PAUSE"
   else
-    m.playPauseLabel.text = "  PLAY"
+    m.playPauseLabel.text = "PLAY"
   end if
 end sub
 
@@ -180,11 +329,10 @@ sub seekRelative(seconds as Integer)
 
   m.video.seek = newPos
 
-  ' Show seek feedback
   if seconds > 0
-    showStatus(">> " + Abs(seconds).ToStr() + "s")
+    showStatus("+" + Abs(seconds).ToStr() + "s")
   else
-    showStatus("<< " + Abs(seconds).ToStr() + "s")
+    showStatus("-" + Abs(seconds).ToStr() + "s")
   end if
   showControls()
 end sub
@@ -193,9 +341,8 @@ sub showStatus(msg as String)
   m.statusLabel.text = msg
   m.statusLabel.visible = true
 
-  ' Hide after 1 second
   statusTimer = createObject("roSGNode", "Timer")
-  statusTimer.duration = 1
+  statusTimer.duration = 1.5
   statusTimer.repeat = false
   statusTimer.observeField("fire", "onHideStatus")
   statusTimer.control = "start"
@@ -207,7 +354,6 @@ sub onHideStatus()
 end sub
 
 sub toggleSubtitles()
-  ' Cycle through available caption modes
   currentMode = m.video.globalCaptionMode
   if currentMode = "On"
     m.video.globalCaptionMode = "Off"
@@ -226,6 +372,7 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
   if key = "back"
     m.video.control = "stop"
+    m.stallTimer.control = "stop"
     m.top.action = "close"
     return true
   end if
