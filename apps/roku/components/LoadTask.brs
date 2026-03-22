@@ -160,11 +160,17 @@ end sub
 function detectFormat(url as String) as String
   lowUrl = LCase(url)
 
-  ' HLS
+  ' Explicit HLS extensions
   if Instr(1, lowUrl, ".m3u8") > 0 then return "hls"
 
-  ' DASH
+  ' Explicit DASH extensions
   if Instr(1, lowUrl, ".mpd") > 0 then return "dash"
+
+  ' Known HLS playlist URL patterns (vixsrc, etc)
+  if Instr(1, lowUrl, "/playlist/") > 0 then return "hls"
+  if Instr(1, lowUrl, "/master.m3u8") > 0 then return "hls"
+  if Instr(1, lowUrl, "/index.m3u8") > 0 then return "hls"
+  if Instr(1, lowUrl, "vixsrc") > 0 then return "hls"
 
   ' Direct video files — Roku uses "mp4" streamFormat for all direct files
   if Instr(1, lowUrl, ".mp4") > 0 then return "mp4"
@@ -174,12 +180,8 @@ function detectFormat(url as String) as String
   if Instr(1, lowUrl, ".avi") > 0 then return "mp4"
   if Instr(1, lowUrl, ".mov") > 0 then return "mp4"
 
-  ' Playlist URLs (vixsrc, etc)
-  if Instr(1, lowUrl, "/playlist/") > 0 then return "hls"
-  if Instr(1, lowUrl, "/index.m3u8") > 0 then return "hls"
-
-  ' Default: treat as direct download (mp4 handler works for most)
-  return "mp4"
+  ' Default: try HLS first (most streaming URLs without extension are HLS)
+  return "hls"
 end function
 
 sub searchTask()

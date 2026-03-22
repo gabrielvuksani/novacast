@@ -376,24 +376,34 @@ sub playStream(url as String, fmt as String, title as String)
     return
   end if
 
-  ' Create content node for video
+  ' Stop any existing playback
+  m.videoPlayer.control = "stop"
+
+  ' Configure video player for best experience
+  m.videoPlayer.enableUI = true
+  m.videoPlayer.enableTrickPlay = true
+
+  ' HTTPS certificate support (fixes error -3 on HTTPS streams)
+  m.videoPlayer.setCertificatesFile("common:/certs/ca-bundle.crt")
+  m.videoPlayer.initClientCertificates()
+
+  ' Create content node
   vc = CreateObject("roSGNode", "ContentNode")
   vc.url = url
   vc.title = title
   vc.streamFormat = fmt
 
-  ' Set poster
-  if m.currentMeta <> invalid and m.currentMeta.poster <> invalid
-    vc.hdPosterUrl = m.currentMeta.poster
+  ' Set poster for info screen
+  if m.currentMeta <> invalid
+    if m.currentMeta.poster <> invalid then vc.hdPosterUrl = m.currentMeta.poster
+    if m.currentMeta.description <> invalid then vc.description = m.currentMeta.description
+    if m.currentMeta.releaseInfo <> invalid then vc.releaseDate = m.currentMeta.releaseInfo
   end if
 
-  ' Set adaptive streaming hints
+  ' Adaptive streaming settings
   if fmt = "hls" or fmt = "dash"
     vc.switchingStrategy = "full-adaptation"
   end if
-
-  ' Stop any existing playback first
-  m.videoPlayer.control = "stop"
 
   ' Set content and play
   m.videoPlayer.content = vc
@@ -405,19 +415,9 @@ sub onVideoStateChange()
   state = m.videoPlayer.state
 
   if state = "error"
-    errCode = ""
-    errMsg = "Playback failed"
-    if m.videoPlayer.errorCode <> invalid
-      errCode = m.videoPlayer.errorCode.ToStr()
-    end if
-    if m.videoPlayer.errorMsg <> invalid and m.videoPlayer.errorMsg <> ""
-      errMsg = m.videoPlayer.errorMsg
-    end if
-
     m.videoPlayer.control = "stop"
     m.videoPlayer.visible = false
 
-    ' Go back and show error
     if m.screenStack.Count() > 0
       prev = m.screenStack.Pop()
       activateScreen(prev)
@@ -425,7 +425,8 @@ sub onVideoStateChange()
       activateScreen("home")
     end if
 
-    showPlaybackError("Error " + errCode + ": " + errMsg + ". Try a different source.")
+    showPlaybackError("This source could not be played. Choose a source labeled [HLS] for best results on Roku.")
+
   else if state = "finished"
     m.videoPlayer.control = "stop"
     m.videoPlayer.visible = false
