@@ -42,7 +42,6 @@ sub loadCatalogsTask()
         if catalogData <> invalid and catalogData.metas <> invalid
           catalogName = catalog.id
           if catalog.name <> invalid and catalog.name <> "" then catalogName = catalog.name
-
           rowData = { title: catalogName, items: [] }
           for each meta in catalogData.metas
             rowData.items.Push(meta)
@@ -67,12 +66,13 @@ sub loadStreamsTask()
 
   for i = 0 to urls.Count() - 1
     url = urls[i]
-    baseUrl = url.Replace("/manifest.json", "")
 
-    ' Handle URLs with config paths (e.g. /eyJhcGkiOi.../manifest.json)
+    ' Extract base URL (strip /manifest.json)
     lastManifest = Instr(1, url, "/manifest.json")
     if lastManifest > 0
       baseUrl = Left(url, lastManifest - 1)
+    else
+      baseUrl = url
     end if
 
     streamApiUrl = baseUrl + "/stream/" + contentType + "/" + contentId + ".json"
@@ -80,77 +80,59 @@ sub loadStreamsTask()
 
     if streamData <> invalid and streamData.streams <> invalid
       for each stream in streamData.streams
+
+        ' Skip streams marked notWebReady
+        if stream.behaviorHints <> invalid
+          if stream.behaviorHints.notWebReady <> invalid and stream.behaviorHints.notWebReady = true
+            continue for
+          end if
+        end if
+
         playUrl = invalid
-        streamFormat = "hls"
-        streamLabel = ""
-        isPlayable = false
         isTorrent = false
 
         ' Check for direct URL
         if stream.url <> invalid and stream.url <> ""
           playUrl = stream.url
-          isPlayable = true
-
-          ' Detect format
-          lowUrl = LCase(playUrl)
-          if Instr(1, lowUrl, ".m3u8") > 0
-            streamFormat = "hls"
-          else if Instr(1, lowUrl, ".mpd") > 0
-            streamFormat = "dash"
-          else if Instr(1, lowUrl, ".mp4") > 0 or Instr(1, lowUrl, ".mkv") > 0 or Instr(1, lowUrl, ".webm") > 0
-            streamFormat = "mp4"
-          else
-            streamFormat = "hls"
-          end if
         end if
 
-        ' Check for torrent (infoHash without url)
+        ' Check for torrent
         if stream.infoHash <> invalid and stream.infoHash <> ""
           if playUrl = invalid or playUrl = ""
             isTorrent = true
-            isPlayable = false
           end if
         end if
 
-        ' Check for external URL
-        if stream.externalUrl <> invalid and stream.externalUrl <> ""
-          if playUrl = invalid or playUrl = ""
+        ' Check for external URL as fallback
+        if playUrl = invalid or playUrl = ""
+          if stream.externalUrl <> invalid and stream.externalUrl <> ""
             playUrl = stream.externalUrl
-            isPlayable = true
-            streamFormat = "hls"
           end if
         end if
 
         ' Build label
-        if stream.name <> invalid and stream.name <> ""
-          streamLabel = stream.name
-        end if
+        streamLabel = ""
+        if stream.name <> invalid and stream.name <> "" then streamLabel = stream.name
         if stream.title <> invalid and stream.title <> ""
           if streamLabel <> ""
-            streamLabel = streamLabel + " - " + stream.title
+            streamLabel = streamLabel + " | " + stream.title
           else
             streamLabel = stream.title
           end if
         end if
         if streamLabel = "" then streamLabel = "Stream"
-        if Len(streamLabel) > 90 then streamLabel = Left(streamLabel, 87) + "..."
+        if Len(streamLabel) > 80 then streamLabel = Left(streamLabel, 77) + "..."
 
-        ' Add stream to results
-        if isPlayable and playUrl <> invalid and playUrl <> ""
-          streams.Push({
-            url: playUrl,
-            format: streamFormat,
-            label: streamLabel,
-            playable: true
-          })
-        else if isTorrent
-          ' Include torrent streams for display but mark as not directly playable
-          streams.Push({
-            url: "",
-            format: "torrent",
-            label: "[Torrent] " + streamLabel,
-            playable: false
-          })
+        if isTorrent
+          streams.Push({ url: "", format: "torrent", label: "[Torrent] " + streamLabel, playable: false })
+        else if playUrl <> invalid and playUrl <> ""
+          ' URL-encode spaces
+          cleanUrl = playUrl.Replace(" ", "%20")
+
+          ' Detect stream format from URL
+          streamFormat = detectFormat(cleanUrl)
+
+          streams.Push({ url: cleanUrl, format: streamFormat, label: streamLabel, playable: true })
         end if
       end for
     end if
@@ -158,6 +140,31 @@ sub loadStreamsTask()
 
   m.top.result = { action: "streams", streams: streams }
 end sub
+
+function detectFormat(url as String) as String
+  lowUrl = LCase(url)
+
+  ' HLS
+  if Instr(1, lowUrl, ".m3u8") > 0 then return "hls"
+
+  ' DASH
+  if Instr(1, lowUrl, ".mpd") > 0 then return "dash"
+
+  ' Direct video files — Roku uses "mp4" streamFormat for all direct files
+  if Instr(1, lowUrl, ".mp4") > 0 then return "mp4"
+  if Instr(1, lowUrl, ".mkv") > 0 then return "mp4"
+  if Instr(1, lowUrl, ".webm") > 0 then return "mp4"
+  if Instr(1, lowUrl, ".m4v") > 0 then return "mp4"
+  if Instr(1, lowUrl, ".avi") > 0 then return "mp4"
+  if Instr(1, lowUrl, ".mov") > 0 then return "mp4"
+
+  ' Playlist URLs (vixsrc, etc)
+  if Instr(1, lowUrl, "/playlist/") > 0 then return "hls"
+  if Instr(1, lowUrl, "/index.m3u8") > 0 then return "hls"
+
+  ' Default: treat as direct download (mp4 handler works for most)
+  return "mp4"
+end function
 
 sub searchTask()
   urls = m.top.transportUrls

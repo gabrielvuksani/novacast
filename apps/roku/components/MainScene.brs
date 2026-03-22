@@ -385,10 +385,12 @@ end sub
 
 sub onVideoStateChange()
   state = m.videoPlayer.state
-  if state = "error" or state = "finished"
+  if state = "error"
     m.videoPlayer.control = "stop"
-    m.videoPlayer.visible = false
-    navigateTo("detail")
+    goBack()
+  else if state = "finished"
+    m.videoPlayer.control = "stop"
+    goBack()
   end if
 end sub
 
