@@ -126,21 +126,46 @@ sub onCatalogsLoaded(result as Object)
 end sub
 
 sub onStreamsLoaded(result as Object)
-  m.currentStreams = result.streams
+  allStreams = result.streams
+  m.currentStreams = []
+  m.playableIndices = []
+
   srcContent = CreateObject("roSGNode", "ContentNode")
-  for each stream in m.currentStreams
+  playableCount = 0
+  torrentCount = 0
+
+  for i = 0 to allStreams.Count() - 1
+    stream = allStreams[i]
     node = srcContent.CreateChild("ContentNode")
-    node.title = stream.label + "  [" + UCase(stream.format) + "]"
+
+    if stream.playable = true
+      node.title = stream.label + "  [" + UCase(stream.format) + "]"
+      m.currentStreams.Push(stream)
+      m.playableIndices.Push(i)
+      playableCount = playableCount + 1
+    else
+      node.title = stream.label
+      m.currentStreams.Push(stream)
+      torrentCount = torrentCount + 1
+    end if
   end for
+
   m.sourceList.content = srcContent
 
-  if m.currentStreams.Count() > 0
-    m.noSrcLabel.visible = false
+  if allStreams.Count() > 0
     m.sourceList.visible = true
+
+    if playableCount > 0
+      m.noSrcLabel.visible = false
+    else
+      m.noSrcLabel.visible = true
+      m.noSrcLabel.text = torrentCount.ToStr() + " torrent sources found (not directly playable on Roku). Use a debrid service or install an addon that provides direct HLS/MP4 streams."
+    end if
+
     m.sourceList.setFocus(true)
   else
     m.noSrcLabel.visible = true
-    m.noSrcLabel.text = "No playable sources found."
+    m.noSrcLabel.text = "No sources found for this title."
     m.sourceList.visible = false
   end if
 end sub
@@ -307,9 +332,25 @@ sub onSourceSelected(event as Object)
   index = event.getData()
   if index >= 0 and index < m.currentStreams.Count()
     stream = m.currentStreams[index]
-    title = ""
-    if m.currentMeta <> invalid then title = m.currentMeta.name
-    playStream(stream.url, stream.format, title)
+    if stream.playable = true and stream.url <> invalid and stream.url <> ""
+      title = ""
+      if m.currentMeta <> invalid then title = m.currentMeta.name
+      playStream(stream.url, stream.format, title)
+    else
+      ' Show message for non-playable streams
+      dialog = createObject("roSGNode", "StandardMessageDialog")
+      dialog.title = "Not Directly Playable"
+      dialog.message = ["This is a torrent source. Roku cannot play", "torrents directly. You need either:", "", "1. A debrid service (Real-Debrid, AllDebrid)", "2. An addon that converts torrents to streams", "3. An addon that provides direct HLS/MP4 URLs"]
+      dialog.buttons = ["OK"]
+      dialog.observeField("buttonSelected", "onDialogClose")
+      m.top.dialog = dialog
+    end if
+  end if
+end sub
+
+sub onDialogClose()
+  if m.top.dialog <> invalid
+    m.top.dialog.close = true
   end if
 end sub
 
@@ -396,11 +437,15 @@ function onKeyEvent(key as String, press as Boolean) as Boolean
 
   if key = "play"
     if m.currentScreen = "detail" and m.currentStreams.Count() > 0
-      stream = m.currentStreams[0]
-      title = ""
-      if m.currentMeta <> invalid then title = m.currentMeta.name
-      playStream(stream.url, stream.format, title)
-      return true
+      ' Find first playable stream
+      for each stream in m.currentStreams
+        if stream.playable = true and stream.url <> invalid and stream.url <> ""
+          title = ""
+          if m.currentMeta <> invalid then title = m.currentMeta.name
+          playStream(stream.url, stream.format, title)
+          return true
+        end if
+      end for
     end if
   end if
 

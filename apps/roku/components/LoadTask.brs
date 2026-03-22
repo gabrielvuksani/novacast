@@ -28,7 +28,6 @@ sub loadCatalogsTask()
     manifest = HttpGetJson(url)
     if manifest <> invalid and manifest.catalogs <> invalid
       for each catalog in manifest.catalogs
-        ' Skip search-only required catalogs
         isSearchOnly = false
         if catalog.extra <> invalid
           for each extra in catalog.extra
@@ -66,14 +65,18 @@ sub loadStreamsTask()
 
   streams = []
 
-  ' Try every addon URL for streams
   for i = 0 to urls.Count() - 1
     url = urls[i]
     baseUrl = url.Replace("/manifest.json", "")
 
-    ' Build stream URL directly without re-fetching manifest
-    streamUrl = baseUrl + "/stream/" + contentType + "/" + contentId + ".json"
-    streamData = HttpGetJson(streamUrl)
+    ' Handle URLs with config paths (e.g. /eyJhcGkiOi.../manifest.json)
+    lastManifest = Instr(1, url, "/manifest.json")
+    if lastManifest > 0
+      baseUrl = Left(url, lastManifest - 1)
+    end if
+
+    streamApiUrl = baseUrl + "/stream/" + contentType + "/" + contentId + ".json"
+    streamData = HttpGetJson(streamApiUrl)
 
     if streamData <> invalid and streamData.streams <> invalid
       for each stream in streamData.streams
@@ -81,48 +84,72 @@ sub loadStreamsTask()
         streamFormat = "hls"
         streamLabel = ""
         isPlayable = false
+        isTorrent = false
 
         ' Check for direct URL
         if stream.url <> invalid and stream.url <> ""
           playUrl = stream.url
+          isPlayable = true
 
-          ' Detect format from URL
+          ' Detect format
           lowUrl = LCase(playUrl)
           if Instr(1, lowUrl, ".m3u8") > 0
             streamFormat = "hls"
-            isPlayable = true
           else if Instr(1, lowUrl, ".mpd") > 0
             streamFormat = "dash"
-            isPlayable = true
-          else if Instr(1, lowUrl, ".mp4") > 0 or Instr(1, lowUrl, ".mkv") > 0
+          else if Instr(1, lowUrl, ".mp4") > 0 or Instr(1, lowUrl, ".mkv") > 0 or Instr(1, lowUrl, ".webm") > 0
             streamFormat = "mp4"
-            isPlayable = true
-          else if Instr(1, lowUrl, "http") > 0
-            ' Could be an HLS stream without .m3u8 extension
+          else
             streamFormat = "hls"
-            isPlayable = true
           end if
         end if
 
-        ' Build display label
+        ' Check for torrent (infoHash without url)
+        if stream.infoHash <> invalid and stream.infoHash <> ""
+          if playUrl = invalid or playUrl = ""
+            isTorrent = true
+            isPlayable = false
+          end if
+        end if
+
+        ' Check for external URL
+        if stream.externalUrl <> invalid and stream.externalUrl <> ""
+          if playUrl = invalid or playUrl = ""
+            playUrl = stream.externalUrl
+            isPlayable = true
+            streamFormat = "hls"
+          end if
+        end if
+
+        ' Build label
         if stream.name <> invalid and stream.name <> ""
           streamLabel = stream.name
         end if
         if stream.title <> invalid and stream.title <> ""
-          if streamLabel <> "" then streamLabel = streamLabel + " - "
-          streamLabel = streamLabel + stream.title
+          if streamLabel <> ""
+            streamLabel = streamLabel + " - " + stream.title
+          else
+            streamLabel = stream.title
+          end if
         end if
         if streamLabel = "" then streamLabel = "Stream"
+        if Len(streamLabel) > 90 then streamLabel = Left(streamLabel, 87) + "..."
 
-        ' Truncate label
-        if Len(streamLabel) > 80 then streamLabel = Left(streamLabel, 77) + "..."
-
-        ' Only add playable streams (with actual URLs, not just infoHash)
-        if isPlayable and playUrl <> invalid
+        ' Add stream to results
+        if isPlayable and playUrl <> invalid and playUrl <> ""
           streams.Push({
             url: playUrl,
             format: streamFormat,
-            label: streamLabel
+            label: streamLabel,
+            playable: true
+          })
+        else if isTorrent
+          ' Include torrent streams for display but mark as not directly playable
+          streams.Push({
+            url: "",
+            format: "torrent",
+            label: "[Torrent] " + streamLabel,
+            playable: false
           })
         end if
       end for
